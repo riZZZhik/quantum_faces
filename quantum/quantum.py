@@ -1,16 +1,15 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from qiskit import IBMQ, QuantumCircuit, ClassicalRegister, QuantumRegister
-from qiskit.tools.visualization import plot_histogram, circuit_drawer
 from qiskit import execute
 
 from .frqi import c10ry
-from . import quantum_edge_detection as qed
+from .quantum_edge_detection import quantum_edge_detection as qed
 from .utils import norm_images_from_disk, norm_face_images_from_disk
 
 
 class Quantum:
-    def __init__(self, ref_image_path, resize_cover_size=(32, 32), crop_faces=True, plt_show=True):
+    def __init__(self, ref_image_path: str, resize_cover_size=(32, 32), crop_faces=True, plt_show=True):
         self.resize_size = resize_cover_size
         self.crop_faces = crop_faces
         self.plt_show = plt_show
@@ -40,7 +39,7 @@ class Quantum:
                 c10ry(self.qc, 2 * norm_image[i], format(i, '010b'), self.img[0], self.anc2[0],
                       [self.img[j] for j in range(1, len(self.img))])
 
-        qed.quantum_edge_detection(self.qc)
+        qed(self.qc)
         self.qc.measure(self.anc, self.c[0])
         self.qc.measure(self.img, self.c[1:12])
         print(self.qc.depth())
@@ -49,8 +48,6 @@ class Quantum:
         self.result = execute(self.qc, self.backend,
                               shots=self.numOfShots, backend_options={"fusion_enable": True}).result()
 
-        circuit_drawer(self.qc).show()
-        plot_histogram(self.result.get_counts(self.qc))
         print(self.result.get_counts(self.qc))
 
     def generated_images(self, images_path: (list, tuple, str)):  # TODO: Rename
