@@ -36,7 +36,7 @@ def norm_images_from_disk(images_paths: (list, tuple, str), resize_size: (list, 
     norm_images = []
 
     for path in images_paths:
-        images.append(Image.open(path).convert('L'))
+        images.append(Image.open(path).convert('LA'))
         norm_images.append(image_normalization(images[-1], *resize_size))
 
     if plt_show:
