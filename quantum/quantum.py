@@ -1,9 +1,12 @@
+import os
+
 import matplotlib.pyplot as plt
 import numpy as np
 from qiskit import IBMQ, QuantumCircuit, ClassicalRegister, QuantumRegister
 from qiskit import execute
 
 from .frqi import c10ry
+from .swap import swap_12
 from .quantum_edge_detection import quantum_edge_detection as qed
 from .utils import norm_images_from_disk, norm_face_images_from_disk
 
@@ -28,7 +31,7 @@ class Quantum:
             images, norm_images = norm_images_from_disk(images_path, self.resize_size, self.plt_show)
 
         # TODO: Comments
-        generate_images = []
+        generated_images = []
         for image_id, norm_image in enumerate(norm_images):
             # Encode
             anc = QuantumRegister(1, "anc")
@@ -80,6 +83,41 @@ class Quantum:
                 plt.savefig('gen_' + str(image_id) + '.png')
                 plt.show()
 
-            generate_images.append(genimg)
+            generated_images.append(genimg)
 
-        return generate_images
+        return generated_images
+
+    def swap_compare(self, images_path: (list, tuple)):
+        assert len(images_path) == 2, 'Able only to compare two images'
+
+        if self.crop_faces:
+            images, face_images, norm_images = norm_face_images_from_disk(images_path, self.resize_size, self.plt_show)
+        else:
+            images, norm_images = norm_images_from_disk(images_path, self.resize_size, self.plt_show)
+
+        targetQubit = QuantumRegister(1, 'target')
+        ref = QuantumRegister(11, 'ref')
+        original = QuantumRegister(11, 'original')
+        anc = QuantumRegister(1, 'anc')
+        c = ClassicalRegister(1)
+
+        qc = QuantumCircuit(targetQubit, ref, original, anc, c)
+
+        for i in range(1, len(ref)):
+            qc.h(ref[i])
+
+        for i in range(1, len(original)):
+            qc.h(original[i])
+
+        # encode ref image
+        for i in range(len(norm_images[0])):
+            if norm_images[0][i] != 0:
+                c10ry(qc, 2 * norm_images[0][i], format(i, '010b'), ref[0], anc[0], [ref[j] for j in range(1, len(ref))])
+
+        # encode original image
+        for i in range(len(norm_images[1])):
+            if norm_images[1][i] != 0:
+                c10ry(qc, 2 * norm_images[1][i], format(i, '010b'), original[0], anc[0],
+                      [original[j] for j in range(1, len(original))])
+
+        return swap_12(qc, targetQubit, ref, original, c, self.backend, self.numOfShots)
