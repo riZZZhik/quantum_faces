@@ -23,23 +23,20 @@ def image_normalization(image, w, h):
     return generated_image
 
 
-def norm_images_from_disk(images_path: (list, tuple, str), resize_size: (list, tuple), plt_show=True):
+def norm_images_from_disk(images_paths: (list, tuple, str), resize_size: (list, tuple), plt_show=True):
     assert type(resize_size) in (list, tuple) and len(resize_size) == 2
 
-    if type(images_path) == str:
-        assert os.path.exists(images_path)
-        images_path = glob(images_path + "/*.jpg") + glob(images_path + "/*.png")
-        print(images_path)
-        return
+    if type(images_paths) == str:
+        assert os.path.exists(images_paths)
+        images_paths = glob(images_paths + "/*.jpg") + glob(images_paths + "/*.png")
     else:
-        assert type(images_path) in (list, tuple)
-
+        assert type(images_paths) in (list, tuple)
 
     images = []
     norm_images = []
 
-    for path in images_path:
-        images.append(Image.open(path).convert('LA'))
+    for path in images_paths:
+        images.append(Image.open(path).convert('L'))
         norm_images.append(image_normalization(images[-1], *resize_size))
 
     if plt_show:
