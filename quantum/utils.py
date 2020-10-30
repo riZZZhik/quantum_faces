@@ -1,9 +1,23 @@
-import matplotlib.pyplot as plt
-import numpy as np
 import os
 from glob import glob
+
+import face_recognition
+import matplotlib.pyplot as plt
+import numpy as np
 from PIL import Image
 from resizeimage import resizeimage
+
+
+def crop_faces(image):
+    image_array = np.array(image)
+    locations = face_recognition.face_locations(image_array)
+
+    face_images = []
+    for location in locations:
+        top, right, bottom, left = location
+        rect = (left, top, right, bottom)
+        face_images.append(image.crop(rect))
+    return face_images
 
 
 def image_normalization(image, w, h):
