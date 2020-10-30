@@ -9,8 +9,9 @@ from .utils import norm_images_from_disk, norm_face_images_from_disk
 
 
 class Quantum:
-    def __init__(self, ref_image_path: str, resize_cover_size=(32, 32), crop_faces=True, plt_show=True):
+    def __init__(self, resize_cover_size=(32, 32), num_of_shots=8192, crop_faces=True, plt_show=True):
         self.resize_size = resize_cover_size
+        self.numOfShots = num_of_shots
         self.crop_faces = crop_faces
         self.plt_show = plt_show
 
@@ -19,38 +20,7 @@ class Quantum:
         self.provider = IBMQ.get_provider()
         self.backend = self.provider.get_backend('ibmq_qasm_simulator')
 
-        self.anc = QuantumRegister(1, "anc")
-        self.img = QuantumRegister(11, "img")
-        self.anc2 = QuantumRegister(1, "anc2")
-        self.c = ClassicalRegister(12)
-        self.qc = QuantumCircuit(self.anc, self.img, self.anc2, self.c)
-
-        for i in range(1, len(self.img)):
-            self.qc.h(self.img[i])
-
-        # Encode ref image.
-        if self.crop_faces:
-            norm_image = norm_face_images_from_disk([ref_image_path], self.resize_size)[2][0]
-        else:
-            norm_image = norm_images_from_disk([ref_image_path], self.resize_size)[1][0]
-
-        for i in range(len(norm_image)):
-            if norm_image[i] != 0:
-                c10ry(self.qc, 2 * norm_image[i], format(i, '010b'), self.img[0], self.anc2[0],
-                      [self.img[j] for j in range(1, len(self.img))])
-
-        qed(self.qc)
-        self.qc.measure(self.anc, self.c[0])
-        self.qc.measure(self.img, self.c[1:12])
-        print(self.qc.depth())
-
-        self.numOfShots = 8192
-        self.result = execute(self.qc, self.backend,
-                              shots=self.numOfShots, backend_options={"fusion_enable": True}).result()
-
-        print(self.result.get_counts(self.qc))
-
-    def generated_images(self, images_path: (list, tuple, str)):  # TODO: Rename
+    def generate_images(self, images_path: (list, tuple, str)):  # TODO: Rename
         # Download and normalize images from disk
         if self.crop_faces:
             images, face_images, norm_images = norm_face_images_from_disk(images_path, self.resize_size, self.plt_show)
@@ -58,15 +28,40 @@ class Quantum:
             images, norm_images = norm_images_from_disk(images_path, self.resize_size, self.plt_show)
 
         # TODO: Comments
-        generated_images = []
+        generate_images = []
         for image_id, norm_image in enumerate(norm_images):
+            # Encode
+            anc = QuantumRegister(1, "anc")
+            img = QuantumRegister(11, "img")
+            anc2 = QuantumRegister(1, "anc2")
+            c = ClassicalRegister(12)
+            qc = QuantumCircuit(anc, img, anc2, c)
+
+            for i in range(1, len(img)):
+                qc.h(img[i])
+
+            # Encode ref image.
+            for i in range(len(norm_image)):
+                if norm_image[i] != 0:
+                    c10ry(qc, 2 * norm_image[i], format(i, '010b'), img[0], anc2[0],
+                          [img[j] for j in range(1, len(img))])
+
+            qed(qc)
+            qc.measure(anc, c[0])
+            qc.measure(img, c[1:12])
+            print(qc.depth())
+
+            result = execute(qc, self.backend, shots=self.numOfShots, backend_options={"fusion_enable": True}).result()
+
+            print(result.get_counts(qc))
+
             # generated image
             genimg = np.array([])
 
             # decode
             for i in range(len(norm_image)):
                 try:
-                    genimg = np.append(genimg, [np.sqrt(self.result.get_counts(self.qc)[format(i, '010b') + '10'] /
+                    genimg = np.append(genimg, [np.sqrt(result.get_counts(qc)[format(i, '010b') + '10'] /
                                                         self.numOfShots)])
                 except KeyError:
                     genimg = np.append(genimg, [0.0])
@@ -85,6 +80,6 @@ class Quantum:
                 plt.savefig('gen_' + str(image_id) + '.png')
                 plt.show()
 
-            generated_images.append(genimg)
+            generate_images.append(genimg)
 
-        return generated_images
+        return generate_images
