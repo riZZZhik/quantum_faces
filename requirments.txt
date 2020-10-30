@@ -1,6 +1,8 @@
 matplotlib
 numpy
+opencv-python
 Pillow
 python-resize-image
 
+face_recognition
 qiskit==0.13.0

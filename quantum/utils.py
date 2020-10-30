@@ -37,19 +37,28 @@ def image_normalization(image, w, h):
     return generated_image
 
 
-def norm_images_from_disk(images_paths: (list, tuple, str), resize_size: (list, tuple), plt_show=True):
-    assert type(resize_size) in (list, tuple) and len(resize_size) == 2
+def get_paths_to_images(images_path):
+    assert type(images_path) in (list, tuple, str), "images_paths type should be list or tuple or str"
 
-    if type(images_paths) == str:
-        assert os.path.exists(images_paths)
-        images_paths = glob(images_paths + "/*.jpg") + glob(images_paths + "/*.png")
+    if type(images_path) == str:
+        assert os.path.isdir(images_path), "Path with images does not exists"
+        images_path = glob(images_path + "/*.jpg") + glob(images_path + "/*.png")
     else:
-        assert type(images_paths) in (list, tuple)
+        assert all(os.path.isfile(p) for p in images_path)
+
+    return images_path
+
+
+def norm_images_from_disk(images_path: (list, tuple, str), resize_size: (list, tuple), plt_show=True):
+    assert type(resize_size) in (list, tuple) and len(resize_size) == 2, \
+        "resize_size type should be list or tuple and length == 2"
+
+    images_path = get_paths_to_images(images_path)
 
     images = []
     norm_images = []
 
-    for path in images_paths:
+    for path in images_path:
         images.append(Image.open(path).convert('LA'))
         norm_images.append(image_normalization(images[-1], *resize_size))
 
@@ -59,3 +68,28 @@ def norm_images_from_disk(images_paths: (list, tuple, str), resize_size: (list, 
             plt.show()
 
     return images, norm_images
+
+
+def norm_face_images_from_disk(images_path: (list, tuple, str), resize_size: (list, tuple), plt_show=True):
+    assert type(resize_size) in (list, tuple) and len(resize_size) == 2, \
+        "resize_size type should be list or tuple and length == 2"
+
+    images_path = get_paths_to_images(images_path)
+
+    images = []
+    face_images = []
+    norm_images = []
+
+    for path in images_path:
+        images.append(Image.open(path))
+        face_images.append(*crop_faces(images[-1]))
+
+    for face in face_images:
+        norm_images.append(image_normalization(face.convert('LA'), *resize_size))
+
+    if plt_show:
+        for face in face_images:
+            plt.imshow(face)
+            plt.show()
+
+    return images, face_images, norm_images

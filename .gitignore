@@ -255,4 +255,5 @@ fabric.properties
 .idea/caches/build_file_checksums.ser
 
 # User ignores
+gen_*.png
 examples/

@@ -1,6 +1,5 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from keras.datasets import mnist
 from qiskit import QuantumCircuit
 from qiskit import execute, Aer
 
@@ -192,6 +191,8 @@ def c10mary(circ, angle, bin, target, anc, controls):
 
 
 if __name__ == '__main__':
+    from keras.datasets import mnist
+
     (x_train, y_train), (x_test, y_test) = mnist.load_data()
     img_num = 0
 
