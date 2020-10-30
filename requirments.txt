@@ -1,0 +1,6 @@
+matplotlib
+numpy
+Pillow
+python-resize-image
+
+qiskit==0.13.0
