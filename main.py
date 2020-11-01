@@ -1,11 +1,32 @@
+from datetime import datetime
+from glob import glob
+from random import sample
+
 from quantum import Quantum
 
+def write_to_file(filename, text):
+    file = open(filename, "a")
+    file.write(text)
+    file.close()
+
 if __name__ == '__main__':
+    files = glob('faces/?.jpg') + glob('faces/?_?.jpg') + glob('faces/*.jpeg') + glob('faces/*.png')
+
     q = Quantum((32, 32))
 
     # generated_images = q.generate_images('faces')
 
-    swap1 = q.swap_compare(['faces/0_0.jpg', 'faces/0_1.jpg'])
-    print("Swap 1: ", swap1)
-    swap2 = q.swap_compare(['faces/0_0.jpg', 'faces/1_0.jpg'])
-    print("Swap 2: ", swap2)
+    time = datetime.now().strftime("%H:%M:%S")
+    write_to_file("Results.txt", "\n\nNew SWAP cycle at {}\n".format(time))
+
+    i = 0
+    while True:
+        i += 1
+
+        images = sample(files, 2)
+        swap = q.swap_compare(images)
+
+        time = datetime.now().strftime("%H:%M:%S")
+        s = "{} Swap {}: {} / {}, on images: {}\n".format(time, i, *swap.values(), images)
+        print(s)
+        write_to_file("Results.txt", s)

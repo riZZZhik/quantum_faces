@@ -42,7 +42,7 @@ def get_paths_to_images(images_path):
 
     if type(images_path) == str:
         assert os.path.isdir(images_path), "Path with images does not exists"
-        images_path = glob(images_path + "/*.jpg") + glob(images_path + "/*.png")
+        images_path = glob(images_path + "/*.jpg") + glob('quantum_faces/faces/*.jpeg') + glob(images_path + "/*.png")
     else:
         assert all(os.path.isfile(p) for p in images_path)
 
