@@ -1,21 +1,32 @@
-import os
-
 import matplotlib.pyplot as plt
 import numpy as np
 from qiskit import IBMQ, QuantumCircuit, ClassicalRegister, QuantumRegister
 from qiskit import execute
 
 from .frqi import c10ry
-from .swap import swap_12
 from .quantum_edge_detection import quantum_edge_detection as qed
-from .utils import norm_images_from_disk, norm_face_images_from_disk
+from .swap import swap_12
+from .utils import norm_images_from_disk, norm_face_images_from_disk, norm_face_landmarks_images_from_disk
 
 
 class Quantum:
-    def __init__(self, resize_cover_size=(32, 32), num_of_shots=8192, crop_faces=True, plt_show=True):
+    """Class for interacting with images on IBMQ
+
+    :param resize_cover_size: Images size on IBMQ
+    :type resize_cover_size: (list, tuple)
+    :param num_of_shots: Num of shots on IBMQ, use only 2^n numbers
+    :type num_of_shots: int
+    :param crop_type: Crop type, 0 - No crop, 1 - Crop faces, 2 - Crop faces and use 64 face points
+    :type crop_type: int
+    :param plt_show: Images size on IBMQ
+    :type plt_show: (list, tuple)
+    """
+    def __init__(self, resize_cover_size=(32, 32), num_of_shots=8192, crop_type=0, plt_show=True):
+        assert crop_type in range(3), "crop_type should be in [0, 1, 2]"
+
         self.resize_size = resize_cover_size
         self.numOfShots = num_of_shots
-        self.crop_faces = crop_faces
+        self.crop_type = crop_type
         self.plt_show = plt_show
 
         # Initialize qiskit module variables.
@@ -23,14 +34,34 @@ class Quantum:
         self.provider = IBMQ.get_provider()
         self.backend = self.provider.get_backend('ibmq_qasm_simulator')
 
-    def generate_images(self, images_path: (list, tuple, str)):  # TODO: Rename
-        # Download and normalize images from disk
-        if self.crop_faces:
-            images, face_images, norm_images = norm_face_images_from_disk(images_path, self.resize_size, self.plt_show)
-        else:
-            images, norm_images = norm_images_from_disk(images_path, self.resize_size, self.plt_show)
+    def _get_norm_images(self, images_path):
+        """Download and normalize images from disk.
 
-        # TODO: Comments
+        :param images_path: Paths to images, or to dir with them
+        :type images_path: [list, tuple, str]
+        """
+        images, face_images, landmarks, landmarks_images, norm_images = [None] * 5
+
+        if self.crop_type == 0:
+            images, norm_images = norm_images_from_disk(images_path, self.resize_size, self.plt_show)
+        elif self.crop_type == 1:
+            images, face_images, norm_images = norm_face_images_from_disk(images_path, self.resize_size, self.plt_show)
+        elif self.crop_type == 2:
+            images, face_images, landmarks, landmarks_images, norm_images = \
+                norm_face_landmarks_images_from_disk(images_path, self.resize_size, self.plt_show)
+        else:
+            raise NotImplementedError
+
+        return images, face_images, landmarks, landmarks_images, norm_images
+
+    def generate_images(self, images_path: (list, tuple, str)):
+        """Generate images on IBMQ.
+
+        :param images_path: Paths to images, or to dir with them
+        :type images_path: [list, tuple, str]
+        """
+        images, face_images, landmarks, landmarks_images, norm_images = self._get_norm_images(images_path)
+
         generated_images = []
         for image_id, norm_image in enumerate(norm_images):
             # Encode
@@ -70,7 +101,7 @@ class Quantum:
                     genimg = np.append(genimg, [0.0])
 
             # inverse normalization
-            genimg *= 32.0 * 255.0  # FIXME: Check is 32.0 if connected to self.resize_size
+            genimg *= 32.0 * 255.0  # TODO: Check is 32.0 if connected to self.resize_size
 
             # convert type
             genimg = genimg.astype('int')
@@ -88,20 +119,22 @@ class Quantum:
         return generated_images
 
     def swap_compare(self, images_path: (list, tuple)):
+        """Compare two images on IBMQ using SWAP algorithm.
+
+        :param images_path: Paths to images, or to dir with them
+        :type images_path: [list, tuple, str]
+        """
         assert len(images_path) == 2, 'Able only to compare two images'
 
-        if self.crop_faces:
-            images, face_images, norm_images = norm_face_images_from_disk(images_path, self.resize_size, self.plt_show)
-        else:
-            images, norm_images = norm_images_from_disk(images_path, self.resize_size, self.plt_show)
+        images, face_images, landmarks, landmarks_images, norm_images = self._get_norm_images(images_path)
 
-        targetQubit = QuantumRegister(1, 'target')
+        target_qubit = QuantumRegister(1, 'target')
         ref = QuantumRegister(11, 'ref')
         original = QuantumRegister(11, 'original')
         anc = QuantumRegister(1, 'anc')
         c = ClassicalRegister(1)
 
-        qc = QuantumCircuit(targetQubit, ref, original, anc, c)
+        qc = QuantumCircuit(target_qubit, ref, original, anc, c)
 
         for i in range(1, len(ref)):
             qc.h(ref[i])
@@ -112,7 +145,8 @@ class Quantum:
         # encode ref image
         for i in range(len(norm_images[0])):
             if norm_images[0][i] != 0:
-                c10ry(qc, 2 * norm_images[0][i], format(i, '010b'), ref[0], anc[0], [ref[j] for j in range(1, len(ref))])
+                c10ry(qc, 2 * norm_images[0][i], format(i, '010b'), ref[0], anc[0],
+                      [ref[j] for j in range(1, len(ref))])
 
         # encode original image
         for i in range(len(norm_images[1])):
@@ -120,4 +154,4 @@ class Quantum:
                 c10ry(qc, 2 * norm_images[1][i], format(i, '010b'), original[0], anc[0],
                       [original[j] for j in range(1, len(original))])
 
-        return swap_12(qc, targetQubit, ref, original, c, self.backend, self.numOfShots)
+        return swap_12(qc, target_qubit, ref, original, c, self.backend, self.numOfShots)

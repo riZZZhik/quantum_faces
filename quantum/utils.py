@@ -3,6 +3,7 @@ from glob import glob
 
 import face_recognition
 import matplotlib.pyplot as plt
+from cv2 import circle
 import numpy as np
 from PIL import Image
 from resizeimage import resizeimage
@@ -22,7 +23,11 @@ def crop_faces(image):
 
 def image_normalization(image, w, h):
     image = resizeimage.resize_cover(image, [w, h])
-    image = np.array([[image.getpixel((x, y))[0] for x in range(w)] for y in range(h)])
+
+    try:
+        image = np.array([[image.getpixel((x, y))[0] for x in range(w)] for y in range(h)])
+    except TypeError:
+        image = np.array([[image.getpixel((x, y)) for x in range(w)] for y in range(h)])
 
     # 2-dim data convert to 1-dim array
     image = image.flatten()
@@ -82,10 +87,11 @@ def norm_face_images_from_disk(images_path: (list, tuple, str), resize_size: (li
 
     for path in images_path:
         images.append(Image.open(path))
-        face_images.append(*crop_faces(images[-1]))
-
-    for face in face_images:
-        norm_images.append(image_normalization(face.convert('LA'), *resize_size))
+        faces = crop_faces(images[-1])
+        if faces:
+            face_images.append(*faces)
+            for face in faces:
+                norm_images.append(image_normalization(face.convert('LA'), *resize_size))
 
     if plt_show:
         for face in face_images:
@@ -93,3 +99,47 @@ def norm_face_images_from_disk(images_path: (list, tuple, str), resize_size: (li
             plt.show()
 
     return images, face_images, norm_images
+
+
+def norm_face_landmarks_images_from_disk(images_path: (list, tuple, str), resize_size: (list, tuple), plt_show=True):
+    assert type(resize_size) in (list, tuple) and len(resize_size) == 2, \
+        "resize_size type should be list or tuple and length == 2"
+
+    images_path = get_paths_to_images(images_path)
+
+    images = []
+    face_images = []
+    landmarks = []
+    landmarks_images = []
+    norm_images = []
+
+    for path in images_path:
+        images.append(Image.open(path))
+        faces = crop_faces(images[-1])
+        if faces:
+            face_images.append(*faces)
+            for face in faces:
+                face = np.array(face)
+                shape = face.shape
+
+                landmarks.append([])
+                for i in face_recognition.face_landmarks(face)[0].values():
+                    landmarks[-1] += i
+
+                landmarks_images.append(np.zeros(shape[:2], np.int8))
+                radius = int(shape[0] / 60)
+                for x, y in landmarks[-1]:
+                    if shape[0] > y >= 0 and shape[1] > x >= 0:
+                        landmarks_images[-1] = circle(landmarks_images[-1], (x, y), radius, 255, -1)  # FIXME: Different face marks size
+
+                landmarks_images[-1] = Image.fromarray(landmarks_images[-1], "L")
+                norm_images.append(image_normalization(landmarks_images[-1], *resize_size))
+
+    if plt_show:
+        for face, marks in zip(face_images, landmarks_images):
+            plt.imshow(face)
+            plt.show()
+            plt.imshow(marks)
+            plt.show()
+
+    return images, face_images, landmarks, landmarks_images, norm_images
