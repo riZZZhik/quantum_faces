@@ -6,14 +6,16 @@ from qiskit import execute
 from .frqi import c10ry
 from .quantum_edge_detection import quantum_edge_detection as qed
 from .swap import swap_12
-from .utils import norm_images_from_disk, norm_face_images_from_disk, norm_face_landmarks_images_from_disk
+from .image_preparation import ImagePreparation
 
 
 class Quantum:
     """Class for interacting with images on IBMQ
 
-    :param resize_cover_size: Images size on IBMQ
-    :type resize_cover_size: (list, tuple)
+    :param face_shape_predict_model: Path to dlib face_shape_predict_model
+    :type face_shape_predict_model: str
+    :param resize_cover: Images size on IBMQ
+    :type resize_cover: (list, tuple)
     :param num_of_shots: Num of shots on IBMQ, use only 2^n numbers
     :type num_of_shots: int
     :param crop_type: Crop type, 0 - No crop, 1 - Crop faces, 2 - Crop faces and use 64 face points
@@ -21,10 +23,13 @@ class Quantum:
     :param plt_show: Images size on IBMQ
     :type plt_show: (list, tuple)
     """
-    def __init__(self, resize_cover_size=(32, 32), num_of_shots=8192, crop_type=0, plt_show=True):
+
+    def __init__(self, face_shape_predict_model, resize_cover=(32, 32), num_of_shots=8192, crop_type=0,
+                 plt_show=True):
         assert crop_type in range(3), "crop_type should be in [0, 1, 2]"
 
-        self.resize_size = resize_cover_size
+        self.image_prep = ImagePreparation(face_shape_predict_model)
+        self.resize_size = resize_cover
         self.numOfShots = num_of_shots
         self.crop_type = crop_type
         self.plt_show = plt_show
@@ -34,33 +39,28 @@ class Quantum:
         self.provider = IBMQ.get_provider()
         self.backend = self.provider.get_backend('ibmq_qasm_simulator')
 
-    def _get_norm_images(self, images_path):
-        """Download and normalize images from disk.
-
-        :param images_path: Paths to images, or to dir with them
-        :type images_path: [list, tuple, str]
-        """
-        images, face_images, landmarks, landmarks_images, norm_images = [None] * 5
-
-        if self.crop_type == 0:
-            images, norm_images = norm_images_from_disk(images_path, self.resize_size, self.plt_show)
-        elif self.crop_type == 1:
-            images, face_images, norm_images = norm_face_images_from_disk(images_path, self.resize_size, self.plt_show)
-        elif self.crop_type == 2:
-            images, face_images, landmarks, landmarks_images, norm_images = \
-                norm_face_landmarks_images_from_disk(images_path, self.resize_size, self.plt_show)
-        else:
-            raise NotImplementedError
-
-        return images, face_images, landmarks, landmarks_images, norm_images
-
     def generate_images(self, images_path: (list, tuple, str)):
         """Generate images on IBMQ.
 
         :param images_path: Paths to images, or to dir with them
         :type images_path: [list, tuple, str]
         """
-        images, face_images, landmarks, landmarks_images, norm_images = self._get_norm_images(images_path)
+        images, face_images, landmarks, landmarks_images, norm_images = \
+            self.image_prep.norm_images_from_disk(images_path, self.crop_type)
+
+        if self.plt_show:
+            if self.crop_type == 0:
+                for image in images:
+                    plt.imshow(image)
+                    plt.show()
+            else:
+                for image in face_images:
+                    plt.imshow(image)
+                    plt.show()
+                if self.crop_type == 2:
+                    for image in landmarks_images:
+                        plt.imshow(image)
+                        plt.show()
 
         generated_images = []
         for image_id, norm_image in enumerate(norm_images):
@@ -126,7 +126,8 @@ class Quantum:
         """
         assert len(images_path) == 2, 'Able only to compare two images'
 
-        images, face_images, landmarks, landmarks_images, norm_images = self._get_norm_images(images_path)
+        images, face_images, landmarks, landmarks_images, norm_images = \
+            self.image_prep.norm_images_from_disk(images_path, self.crop_type)
 
         target_qubit = QuantumRegister(1, 'target')
         ref = QuantumRegister(11, 'ref')

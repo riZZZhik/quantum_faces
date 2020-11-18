@@ -14,7 +14,7 @@ def write_to_file(filename, text):
 if __name__ == '__main__':
     files = glob('faces/?.jpg') + glob('faces/?_?.jpg') + glob('faces/*.jpeg') + glob('faces/*.png')
 
-    q = Quantum(crop_type=2)
+    q = Quantum('quantum/shape_predictor_68_face_landmarks.dat', crop_type=2)
 
     generated_images = q.generate_images(files)
 
