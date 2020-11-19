@@ -129,30 +129,31 @@ class Quantum:
         images, face_images, landmarks, landmarks_images, norm_images = \
             self.image_prep.norm_images_from_disk(images_path, self.crop_type)
 
-        target_qubit = QuantumRegister(1, 'target')
-        ref = QuantumRegister(11, 'ref')
-        original = QuantumRegister(11, 'original')
-        anc = QuantumRegister(1, 'anc')
-        c = ClassicalRegister(1)
+        if len(norm_images) == 2:
+            target_qubit = QuantumRegister(1, 'target')
+            ref = QuantumRegister(11, 'ref')
+            original = QuantumRegister(11, 'original')
+            anc = QuantumRegister(1, 'anc')
+            c = ClassicalRegister(1)
 
-        qc = QuantumCircuit(target_qubit, ref, original, anc, c)
+            qc = QuantumCircuit(target_qubit, ref, original, anc, c)
 
-        for i in range(1, len(ref)):
-            qc.h(ref[i])
+            for i in range(1, len(ref)):
+                qc.h(ref[i])
 
-        for i in range(1, len(original)):
-            qc.h(original[i])
+            for i in range(1, len(original)):
+                qc.h(original[i])
 
-        # encode ref image
-        for i in range(len(norm_images[0])):
-            if norm_images[0][i] != 0:
-                c10ry(qc, 2 * norm_images[0][i], format(i, '010b'), ref[0], anc[0],
-                      [ref[j] for j in range(1, len(ref))])
+            # encode ref image
+            for i in range(len(norm_images[0])):
+                if norm_images[0][i] != 0:
+                    c10ry(qc, 2 * norm_images[0][i], format(i, '010b'), ref[0], anc[0],
+                          [ref[j] for j in range(1, len(ref))])
 
-        # encode original image
-        for i in range(len(norm_images[1])):
-            if norm_images[1][i] != 0:
-                c10ry(qc, 2 * norm_images[1][i], format(i, '010b'), original[0], anc[0],
-                      [original[j] for j in range(1, len(original))])
+            # encode original image
+            for i in range(len(norm_images[1])):
+                if norm_images[1][i] != 0:
+                    c10ry(qc, 2 * norm_images[1][i], format(i, '010b'), original[0], anc[0],
+                          [original[j] for j in range(1, len(original))])
 
-        return swap_12(qc, target_qubit, ref, original, c, self.backend, self.numOfShots)
+            return swap_12(qc, target_qubit, ref, original, c, self.backend, self.numOfShots)
