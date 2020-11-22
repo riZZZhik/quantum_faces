@@ -1,10 +1,15 @@
-
-
-New SWAP cycle at 12:46:15
-12:52:55 Swap 1: 5791 / 2401, on images: ['faces\\3.jpg', 'faces\\0_0.jpg']
-13:01:42 Swap 2: 6210 / 1982, on images: ['faces\\0_0.jpg', 'faces\\4.jpeg']
-
-
-New SWAP cycle at 13:14:57
-13:23:46 Swap 1: 4486 / 3706, on images: ['faces\\0_0.jpg', 'faces\\0_1.jpg']
-13:23:49 SWAP 2: No image found, on images: ['faces\\1_0.jpg', 'faces\\1_1.jpg']
+New SWAP cycle at 17:22:48
+17:37:30 Swap: 2311 / 5881, on images: ['quantum_faces/faces/6_1.jpg', 'quantum_faces/faces/6_0.jpg']
+17:52:50 Swap: 6880 / 1312, on images: ['quantum_faces/faces/6_1.jpg', 'quantum_faces/faces/3.jpg']
+18:00:25 Swap: 2433 / 5759, on images: ['quantum_faces/faces/6_0.jpg', 'quantum_faces/faces/0_1.jpg']
+18:11:26 Swap: 3105 / 5087, on images: ['quantum_faces/faces/6_0.jpg', 'quantum_faces/faces/2_1.jpg']
+18:11:37 Swap: No images found, on images: ['quantum_faces/faces/0_0.jpg', 'quantum_faces/faces/1_0.jpg']
+18:11:47 Swap: No images found, on images: ['quantum_faces/faces/6_0.jpg', 'quantum_faces/faces/1_0.jpg']
+18:11:56 Swap: No images found, on images: ['quantum_faces/faces/2_1.jpg', 'quantum_faces/faces/1_0.jpg']
+18:23:46 Swap: 2907 / 5285, on images: ['quantum_faces/faces/2_0.jpeg', 'quantum_faces/faces/2_1.jpg']
+18:29:32 Swap: 2818 / 5374, on images: ['quantum_faces/faces/6_0.jpg', 'quantum_faces/faces/0_0.jpg']
+18:43:10 Swap: 3148 / 5044, on images: ['quantum_faces/faces/6_0.jpg', 'quantum_faces/faces/5.jpeg']
+18:56:10 Swap: 6899 / 1293, on images: ['quantum_faces/faces/3.jpg', 'quantum_faces/faces/6_1.jpg']
+19:10:14 Swap: 5419 / 2773, on images: ['quantum_faces/faces/0_0.jpg', 'quantum_faces/faces/1_1.jpg']
+19:18:00 Swap: 6097 / 2095, on images: ['quantum_faces/faces/1_1.jpg', 'quantum_faces/faces/3.jpg']
+19:18:10 Swap: No images found, on images: ['quantum_faces/faces/1_0.jpg', 'quantum_faces/faces/6_1.jpg']

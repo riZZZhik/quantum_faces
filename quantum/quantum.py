@@ -118,7 +118,7 @@ class Quantum:
 
         return generated_images
 
-    def swap_compare(self, images_path: (list, tuple)):
+    def swap_compare(self, images_path: (list, tuple, str)):
         """Compare two images on IBMQ using SWAP algorithm.
 
         :param images_path: Paths to images, or to dir with them

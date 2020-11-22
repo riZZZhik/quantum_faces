@@ -3,7 +3,6 @@ from glob import glob
 
 import cv2
 import dlib
-import matplotlib.pyplot as plt
 import numpy as np
 from PIL import Image
 from resizeimage import resizeimage

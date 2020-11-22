@@ -1,8 +1,9 @@
+datetime
 matplotlib
 numpy
 opencv-python
 Pillow
 python-resize-image
 
-face_recognition
+dlib
 qiskit==0.13.0
