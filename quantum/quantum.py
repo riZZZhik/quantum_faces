@@ -195,6 +195,11 @@ class Quantum:
             "test": {i: [] for i in range(n_components)},
             "val": {i: [] for i in range(n_components)}
         }
+        self.dataset_circuits = {
+            "train": {i: [] for i in range(n_components)},
+            "test": {i: [] for i in range(n_components)},
+            "val": {i: [] for i in range(n_components)}
+        }
 
         for x, y in zip(x_train, y_train):
             self.dataset["train"][y].append(x)
@@ -203,16 +208,24 @@ class Quantum:
         for x, y in zip(x_val, y_val):
             self.dataset["train"][y].append(x)
 
-    def qsvm_train(self, image_path: str, dataset_images_path: (list, tuple, str)):
+    def qsvm_train(self):
         # Get dataset if needed
         if not self.dataset:
             self.get_dataset()
 
         # Normalize dataset images
         for key in self.dataset:
-            for i, image in enumerate(self.dataset[key]):
-                self.dataset[key][i] = self.image_prep.image_normalization(image, 32, 32)
+            for i in self.dataset[key]:
+                for image in self.dataset[key][i]:
+                    self.dataset[key][i] = self.image_prep.image_normalization(image, 32, 32)
 
         # Generate circuits from dataset images
         for key in self.dataset:
-            self.dataset_circuits[key] = self.cities_encode(self.dataset[key])
+            for i in self.dataset[key]:
+                self.dataset_circuits[key][i] = self.cities_encode(self.dataset[key][i])
+
+        # Get datapoints from val dataset
+        datapoints, class_to_label = split_dataset_to_data_and_labels(self.dataset["val"])
+
+        feature_map = FirstOrderExpansion(feature_dimension=len(self.dataset["target_names"]))
+        
