@@ -170,3 +170,31 @@ class Quantum:
                           [original[j] for j in range(1, len(original))])
 
             return swap_12(qc, target_qubit, ref, original, c, self.backend, self.numOfShots)
+
+    def get_QSVM_dataset(self):
+        from sklearn.model_selection import train_test_split
+        from sklearn.datasets import fetch_lfw_people
+
+        # Load data
+        lfw_dataset = fetch_lfw_people(min_faces_per_person=100)
+
+        _, h, w = lfw_dataset.images.shape
+        x = lfw_dataset.data[:-40]
+        y = lfw_dataset.target[:-40]
+
+        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.3)
+
+        x_val = lfw_dataset.data[-40:]
+        y_val = lfw_dataset.target[-40:]
+
+        self.dataset = {
+            "x_train": x_train,
+            "y_train": y_train,
+            "x_test": x_test,
+            "y_test": y_test,
+            "x_val": x_val,
+            "y_val": y_val
+        }
+
+        for key, value in self.dataset.items():
+            self.dataset[key] = {i: v for i, v in enumerate(self.dataset[key])}
