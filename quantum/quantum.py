@@ -36,7 +36,8 @@ class Quantum:
         self.plt_show = plt_show
 
         # Dataset variables
-        self.dataset = None
+        self.dataset = {}
+        self.dataset_circuits = {}
 
         # Initialize qiskit module variables.
         IBMQ.load_account()
@@ -171,7 +172,7 @@ class Quantum:
 
             return swap_12(qc, target_qubit, ref, original, c, self.backend, self.numOfShots)
 
-    def get_QSVM_dataset(self):
+    def get_dataset(self):
         from sklearn.model_selection import train_test_split
         from sklearn.datasets import fetch_lfw_people
 
@@ -198,3 +199,17 @@ class Quantum:
 
         for key, value in self.dataset.items():
             self.dataset[key] = {i: v for i, v in enumerate(self.dataset[key])}
+
+    def qsvm_train(self, image_path: str, dataset_images_path: (list, tuple, str)):
+        # Get dataset if needed
+        if not self.dataset:
+            self.get_dataset()
+
+        # Normalize dataset images
+        for key in self.dataset:
+            for i, image in enumerate(self.dataset[key]):
+                self.dataset[key][i] = self.image_prep.image_normalization(image, 32, 32)
+
+        # Generate circuits from dataset images
+        for key in self.dataset:
+            self.dataset_circuits[key] = self.cities_encode(self.dataset[key])
