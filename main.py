@@ -23,7 +23,7 @@ def write_to_file(filename, text):
 
 
 if __name__ == "__main__":
-    q = Quantum('quantum_faces/quantum/shape_predictor_68_face_landmarks.dat', crop_type=2)
+    q = Quantum('quantum/shape_predictor_68_face_landmarks.dat', crop_type=2)
 
     i = 0
     while True:

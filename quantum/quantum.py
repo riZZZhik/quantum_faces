@@ -28,16 +28,49 @@ class Quantum:
                  plt_show=True):
         assert crop_type in range(3), "crop_type should be in [0, 1, 2]"
 
+        # Class variables
         self.image_prep = ImagePreparation(face_shape_predict_model)
         self.resize_size = resize_cover
         self.numOfShots = num_of_shots
         self.crop_type = crop_type
         self.plt_show = plt_show
 
+        # Dataset variables
+        self.dataset = None
+
         # Initialize qiskit module variables.
         IBMQ.load_account()
         self.provider = IBMQ.get_provider()
         self.backend = self.provider.get_backend('ibmq_qasm_simulator')
+
+    @staticmethod
+    def cities_encode(norm_images):
+        circuits = []
+        for norm_image in norm_images:
+            # Encode
+            anc = QuantumRegister(1, "anc")
+            img = QuantumRegister(11, "img")
+            anc2 = QuantumRegister(1, "anc2")
+            c = ClassicalRegister(12)
+            qc = QuantumCircuit(anc, img, anc2, c)
+
+            for i in range(1, len(img)):
+                qc.h(img[i])
+
+            # Encode ref image.
+            for i in range(len(norm_image)):
+                if norm_image[i] != 0:
+                    c10ry(qc, 2 * norm_image[i], format(i, '010b'), img[0], anc2[0],
+                          [img[j] for j in range(1, len(img))])
+
+            qed(qc)
+            qc.measure(anc, c[0])
+            qc.measure(img, c[1:12])
+            print(qc.depth())
+
+            circuits.append(qc)
+
+        return circuits
 
     def generate_images(self, images_path: (list, tuple, str)):
         """Generate images on IBMQ.
@@ -62,29 +95,9 @@ class Quantum:
                         plt.imshow(image)
                         plt.show()
 
+        circuits = self.cities_encode(norm_images)
         generated_images = []
-        for image_id, norm_image in enumerate(norm_images):
-            # Encode
-            anc = QuantumRegister(1, "anc")
-            img = QuantumRegister(11, "img")
-            anc2 = QuantumRegister(1, "anc2")
-            c = ClassicalRegister(12)
-            qc = QuantumCircuit(anc, img, anc2, c)
-
-            for i in range(1, len(img)):
-                qc.h(img[i])
-
-            # Encode ref image.
-            for i in range(len(norm_image)):
-                if norm_image[i] != 0:
-                    c10ry(qc, 2 * norm_image[i], format(i, '010b'), img[0], anc2[0],
-                          [img[j] for j in range(1, len(img))])
-
-            qed(qc)
-            qc.measure(anc, c[0])
-            qc.measure(img, c[1:12])
-            print(qc.depth())
-
+        for image_id, qc, norm_image in enumerate(zip(circuits, norm_images)):
             result = execute(qc, self.backend, shots=self.numOfShots, backend_options={"fusion_enable": True}).result()
 
             print(result.get_counts(qc))
