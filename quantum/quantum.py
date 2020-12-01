@@ -2,11 +2,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 from qiskit import IBMQ, QuantumCircuit, ClassicalRegister, QuantumRegister
 from qiskit import execute
+from qiskit.aqua.components.feature_maps import FirstOrderExpansion
+from qiskit.aqua.utils import split_dataset_to_data_and_labels
 
 from .frqi import c10ry
+from .image_preparation import ImagePreparation
 from .quantum_edge_detection import quantum_edge_detection as qed
 from .swap import swap_12
-from .image_preparation import ImagePreparation
 
 
 class Quantum:
@@ -29,7 +31,7 @@ class Quantum:
         assert crop_type in range(3), "crop_type should be in [0, 1, 2]"
 
         # Class variables
-        self.image_prep = ImagePreparation(face_shape_predict_model)
+        self.image_prep = ImagePreparation(face_shape_predict_model)  # TODO: No face_shape_predict_model path
         self.resize_size = resize_cover
         self.numOfShots = num_of_shots
         self.crop_type = crop_type
@@ -179,26 +181,27 @@ class Quantum:
         # Load data
         lfw_dataset = fetch_lfw_people(min_faces_per_person=100)
 
+        # Save train, test and val datasets to self.dataset
         _, h, w = lfw_dataset.images.shape
-        x = lfw_dataset.data[:-40]
+        x = lfw_dataset.images[:-40]
         y = lfw_dataset.target[:-40]
+        n_components = len(lfw_dataset.target_names)
 
-        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.3)
-
-        x_val = lfw_dataset.data[-40:]
-        y_val = lfw_dataset.target[-40:]
+        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.25)
+        x_val, y_val = lfw_dataset.images[-40:], lfw_dataset.target[-40:]
 
         self.dataset = {
-            "x_train": x_train,
-            "y_train": y_train,
-            "x_test": x_test,
-            "y_test": y_test,
-            "x_val": x_val,
-            "y_val": y_val
+            "train": {i: [] for i in range(n_components)},
+            "test": {i: [] for i in range(n_components)},
+            "val": {i: [] for i in range(n_components)}
         }
 
-        for key, value in self.dataset.items():
-            self.dataset[key] = {i: v for i, v in enumerate(self.dataset[key])}
+        for x, y in zip(x_train, y_train):
+            self.dataset["train"][y].append(x)
+        for x, y in zip(x_test, y_test):
+            self.dataset["train"][y].append(x)
+        for x, y in zip(x_val, y_val):
+            self.dataset["train"][y].append(x)
 
     def qsvm_train(self, image_path: str, dataset_images_path: (list, tuple, str)):
         # Get dataset if needed
