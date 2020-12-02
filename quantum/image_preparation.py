@@ -79,6 +79,8 @@ class ImagePreparation:
 
     @staticmethod
     def image_normalization(image, w, h):
+        if type(image) == np.ndarray:
+            image = Image.fromarray(image)
         image = resizeimage.resize_cover(image, [w, h])
 
         try:

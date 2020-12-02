@@ -1,10 +1,14 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from qiskit import IBMQ, QuantumCircuit, ClassicalRegister, QuantumRegister
+from qiskit import IBMQ, QuantumCircuit, ClassicalRegister, QuantumRegister, BasicAer
 from qiskit import execute
+from qiskit.aqua import QuantumInstance
+from qiskit.aqua.algorithms import QSVM
 from qiskit.aqua.components.feature_maps import FirstOrderExpansion
+# from qiskit.aqua.components.multiclass_extensions.all_pairs import AllPairs
 from qiskit.aqua.utils import split_dataset_to_data_and_labels
 
+from .all_pairs import AllPairs
 from .frqi import c10ry
 from .image_preparation import ImagePreparation
 from .quantum_edge_detection import quantum_edge_detection as qed
@@ -69,7 +73,6 @@ class Quantum:
             qed(qc)
             qc.measure(anc, c[0])
             qc.measure(img, c[1:12])
-            print(qc.depth())
 
             circuits.append(qc)
 
@@ -209,6 +212,7 @@ class Quantum:
             self.dataset["train"][y].append(x)
 
     def qsvm_train(self):
+        seed = 10675
         # Get dataset if needed
         if not self.dataset:
             self.get_dataset()
@@ -217,15 +221,32 @@ class Quantum:
         for key in self.dataset:
             for i in self.dataset[key]:
                 for image in self.dataset[key][i]:
-                    self.dataset[key][i] = self.image_prep.image_normalization(image, 32, 32)
+                    self.dataset_circuits[key][i].append(self.image_prep.image_normalization(image, 32, 32))
 
         # Generate circuits from dataset images
-        for key in self.dataset:
-            for i in self.dataset[key]:
-                self.dataset_circuits[key][i] = self.cities_encode(self.dataset[key][i])
+        for key in self.dataset_circuits:
+            for i in self.dataset_circuits[key]:
+                self.dataset_circuits[key][i] = self.cities_encode(self.dataset_circuits[key][i])
 
         # Get datapoints from val dataset
         datapoints, class_to_label = split_dataset_to_data_and_labels(self.dataset["val"])
 
-        feature_map = FirstOrderExpansion(feature_dimension=len(self.dataset["target_names"]))
-        
+        # Generate feature_map
+        feature_map = FirstOrderExpansion(feature_dimension=len(self.dataset["val"].keys()))
+        # feature_map = SecondOrderExpansion(feature_dimension=len(self.dataset["val"].keys(), depth=2, entanglement='linear')
+        # feature_map = SecondOrderExpansion(feature_dimension=len(self.dataset["val"].keys(), depth=2, entanglement='full')
+        # feature_map = RawFeatureVector(feature_dimension=len(self.dataset["val"].keys())
+
+        # Create train QSVM
+        qsvm = QSVM(feature_map, self.dataset_circuits["train"], self.dataset_circuits["test"], datapoints[0],
+                    multiclass_extension=AllPairs())
+
+        # Create train backend
+        backend = BasicAer.get_backend('qasm_simulator')
+        quantum_instance = QuantumInstance(backend, shots=1024, seed_simulator=seed, seed_transpiler=seed)
+
+        # Run train
+        result = qsvm.run(quantum_instance)
+
+        return result
+
