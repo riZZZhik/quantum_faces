@@ -34,8 +34,8 @@ class Quantum:
     """
 
     def __init__(self, face_shape_predict_model, resize_cover=(32, 32), num_of_shots=8192, crop_type=0,
-                 plt_show=True):
-        self.logger = init_logger("logs.log", logging.DEBUG, __name__)
+                 plt_show=True, log_file="logs.log", log_level=logging.DEBUG):
+        self.logger = init_logger(log_file, log_level, __name__)
         self.logger.info("Initializing Quantum class")
 
         assert crop_type in range(3), "crop_type should be in [0, 1, 2]"
