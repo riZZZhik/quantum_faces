@@ -18,7 +18,7 @@ def write_to_file(filename, text):  # TODO: Logger
         file.close()
     else:
         file = open(filename, "w")
-        file.write(s)
+        file.write(text)
         file.close()
 
 

@@ -1,18 +1,21 @@
+import logging
+
 import matplotlib.pyplot as plt
 import numpy as np
 from qiskit import IBMQ, QuantumCircuit, ClassicalRegister, QuantumRegister, BasicAer
 from qiskit import execute
 from qiskit.aqua import QuantumInstance
 from qiskit.aqua.algorithms import QSVM
-from qiskit.aqua.components.feature_maps import FirstOrderExpansion
-# from qiskit.aqua.components.multiclass_extensions.all_pairs import AllPairs
-from qiskit.aqua.utils import split_dataset_to_data_and_labels
+from qiskit.aqua.components.feature_maps import FirstOrderExpansion, SecondOrderExpansion
+from qiskit.aqua.components.feature_maps.raw_feature_vector import RawFeatureVector
+from qiskit.aqua.utils import split_dataset_to_data_and_labels, map_label_to_class_name
 
 from .all_pairs import AllPairs
 from .frqi import c10ry
 from .image_preparation import ImagePreparation
 from .quantum_edge_detection import quantum_edge_detection as qed
 from .swap import swap_12
+from .utils import init_logger
 
 
 class Quantum:
@@ -32,6 +35,9 @@ class Quantum:
 
     def __init__(self, face_shape_predict_model, resize_cover=(32, 32), num_of_shots=8192, crop_type=0,
                  plt_show=True):
+        self.logger = init_logger("logs.log", logging.DEBUG, __name__)
+        self.logger.info("Initializing Quantum class")
+
         assert crop_type in range(3), "crop_type should be in [0, 1, 2]"
 
         # Class variables
@@ -50,8 +56,10 @@ class Quantum:
         self.provider = IBMQ.get_provider()
         self.backend = self.provider.get_backend('ibmq_qasm_simulator')
 
-    @staticmethod
-    def cities_encode(norm_images):
+        self.logger.debug("Initialized Quantum class")
+
+    def cities_encode(self, norm_images):
+        self.logger.info(f"Generating {len(norm_images)} circuits from images")
         circuits = []
         for norm_image in norm_images:
             # Encode
@@ -76,6 +84,7 @@ class Quantum:
 
             circuits.append(qc)
 
+        self.logger.debug(f"Generated {len(norm_images)} circuits from images")
         return circuits
 
     def generate_images(self, images_path: (list, tuple, str)):
@@ -86,6 +95,8 @@ class Quantum:
         """
         images, face_images, landmarks, landmarks_images, norm_images = \
             self.image_prep.norm_images_from_disk(images_path, self.crop_type)
+
+        self.logger.info(f"Generating {len(images)} images")
 
         if self.plt_show:
             if self.crop_type == 0:
@@ -105,8 +116,6 @@ class Quantum:
         generated_images = []
         for image_id, qc, norm_image in enumerate(zip(circuits, norm_images)):
             result = execute(qc, self.backend, shots=self.numOfShots, backend_options={"fusion_enable": True}).result()
-
-            print(result.get_counts(qc))
 
             # generated image
             genimg = np.array([])
@@ -144,43 +153,44 @@ class Quantum:
         :type images_path: [list, tuple, str]
         """
         assert len(images_path) == 2, 'Able only to compare two images'
+        self.logger.info(f"Comparing 2 images using SWAP algorithm")
 
         images, face_images, landmarks, landmarks_images, norm_images = \
             self.image_prep.norm_images_from_disk(images_path, self.crop_type)
 
-        if len(norm_images) == 2:
-            target_qubit = QuantumRegister(1, 'target')
-            ref = QuantumRegister(11, 'ref')
-            original = QuantumRegister(11, 'original')
-            anc = QuantumRegister(1, 'anc')
-            c = ClassicalRegister(1)
+        target_qubit = QuantumRegister(1, 'target')
+        ref = QuantumRegister(11, 'ref')
+        original = QuantumRegister(11, 'original')
+        anc = QuantumRegister(1, 'anc')
+        c = ClassicalRegister(1)
 
-            qc = QuantumCircuit(target_qubit, ref, original, anc, c)
+        qc = QuantumCircuit(target_qubit, ref, original, anc, c)
 
-            for i in range(1, len(ref)):
-                qc.h(ref[i])
+        for i in range(1, len(ref)):
+            qc.h(ref[i])
 
-            for i in range(1, len(original)):
-                qc.h(original[i])
+        for i in range(1, len(original)):
+            qc.h(original[i])
 
-            # encode ref image
-            for i in range(len(norm_images[0])):
-                if norm_images[0][i] != 0:
-                    c10ry(qc, 2 * norm_images[0][i], format(i, '010b'), ref[0], anc[0],
-                          [ref[j] for j in range(1, len(ref))])
+        # encode ref image
+        for i in range(len(norm_images[0])):
+            if norm_images[0][i] != 0:
+                c10ry(qc, 2 * norm_images[0][i], format(i, '010b'), ref[0], anc[0],
+                      [ref[j] for j in range(1, len(ref))])
 
-            # encode original image
-            for i in range(len(norm_images[1])):
-                if norm_images[1][i] != 0:
-                    c10ry(qc, 2 * norm_images[1][i], format(i, '010b'), original[0], anc[0],
-                          [original[j] for j in range(1, len(original))])
+        # encode original image
+        for i in range(len(norm_images[1])):
+            if norm_images[1][i] != 0:
+                c10ry(qc, 2 * norm_images[1][i], format(i, '010b'), original[0], anc[0],
+                      [original[j] for j in range(1, len(original))])
 
-            return swap_12(qc, target_qubit, ref, original, c, self.backend, self.numOfShots)
+        return swap_12(qc, target_qubit, ref, original, c, self.backend, self.numOfShots)
 
     def get_dataset(self):
         from sklearn.model_selection import train_test_split
         from sklearn.datasets import fetch_lfw_people
 
+        self.logger.info("Initializing sklearn fetch_lfw_people dataset")
         # Load data
         lfw_dataset = fetch_lfw_people(min_faces_per_person=100)
 
@@ -211,8 +221,8 @@ class Quantum:
         for x, y in zip(x_val, y_val):
             self.dataset["train"][y].append(x)
 
-    def qsvm_train(self):
-        seed = 10675
+    def qsvm_train(self, feature_map_type=0): # TODO: Comments
+        self.logger.info("Preparing QSVM Model dataset")
         # Get dataset if needed
         if not self.dataset:
             self.get_dataset()
@@ -232,21 +242,33 @@ class Quantum:
         datapoints, class_to_label = split_dataset_to_data_and_labels(self.dataset["val"])
 
         # Generate feature_map
-        feature_map = FirstOrderExpansion(feature_dimension=len(self.dataset["val"].keys()))
-        # feature_map = SecondOrderExpansion(feature_dimension=len(self.dataset["val"].keys(), depth=2, entanglement='linear')
-        # feature_map = SecondOrderExpansion(feature_dimension=len(self.dataset["val"].keys(), depth=2, entanglement='full')
-        # feature_map = RawFeatureVector(feature_dimension=len(self.dataset["val"].keys())
+        if feature_map_type == 0:
+            feature_map = FirstOrderExpansion(feature_dimension=len(self.dataset["val"].keys()))
+        elif feature_map_type == 1:
+            feature_map = RawFeatureVector(feature_dimension=len(self.dataset["val"].keys()))
+        elif feature_map_type == 2:
+            feature_map = SecondOrderExpansion(feature_dimension=len(self.dataset["val"].keys()))
+        elif feature_map_type == 3:
+            feature_map = SecondOrderExpansion(feature_dimension=len(self.dataset["val"].keys()), entanglement='linear')
+        else:
+            raise NotImplementedError
 
         # Create train QSVM
         qsvm = QSVM(feature_map, self.dataset_circuits["train"], self.dataset_circuits["test"], datapoints[0],
                     multiclass_extension=AllPairs())
 
         # Create train backend
-        backend = BasicAer.get_backend('qasm_simulator')
-        quantum_instance = QuantumInstance(backend, shots=1024, seed_simulator=seed, seed_transpiler=seed)
+        # backend = BasicAer.get_backend('qasm_simulator')
+        seed = 10675
+        quantum_instance = QuantumInstance(self.backend, shots=1024, seed_simulator=seed, seed_transpiler=seed)
 
         # Run train
+        self.logger.info("Running QSVM model training")
         result = qsvm.run(quantum_instance)
 
-        return result
+        self.logger.info(f"Testing success ratio: {result['testing_accuracy']}")
+        self.logger.info("Val predictions: "
+                         f"Ground truth - {map_label_to_class_name(datapoints[1], qsvm.label_to_class)}, "
+                         f"Prediction: {result['predicted_classes']}")
 
+        return result
