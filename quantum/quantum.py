@@ -191,7 +191,10 @@ class Quantum:
                 c10ry(qc, 2 * norm_images[1][i], format(i, '010b'), original[0], anc[0],
                       [original[j] for j in range(1, len(original))])
 
-        return swap_12(qc, target_qubit, ref, original, c, self.backend, self.numOfShots)
+        swap = swap_12(qc, target_qubit, ref, original, c, self.backend, self.numOfShots)
+
+        self.logger.info("Swap results ({} / {}), on images {}, {}".format(*swap.values(), *images_path))
+        return swap
 
     def get_dataset(self):
         """Get faces dataset from sklearn fetch_lfw_people and save it to self.dataset"""
