@@ -59,9 +59,14 @@ class Quantum:
         self.logger.debug("Initialized Quantum class")
 
     def cities_encode(self, norm_images):
+        """Generate circuits from images. Method taken from citiesatnight git repository
+
+        :param norm_images: List of images, normalized using ImagePreparation.image_normalization method.
+        :type norm_images: list or tuple
+        """
         self.logger.info(f"Generating {len(norm_images)} circuits from images")
         circuits = []
-        for norm_image in norm_images:
+        for i, norm_image in enumerate(norm_images):
             # Encode
             anc = QuantumRegister(1, "anc")
             img = QuantumRegister(11, "img")
@@ -83,6 +88,8 @@ class Quantum:
             qc.measure(img, c[1:12])
 
             circuits.append(qc)
+
+            self.logger.debug(f"Generated {i}/{len(norm_images)} circuit")
 
         self.logger.debug(f"Generated {len(norm_images)} circuits from images")
         return circuits
@@ -187,6 +194,7 @@ class Quantum:
         return swap_12(qc, target_qubit, ref, original, c, self.backend, self.numOfShots)
 
     def get_dataset(self):
+        """Get faces dataset from sklearn fetch_lfw_people and save it to self.dataset"""
         from sklearn.model_selection import train_test_split
         from sklearn.datasets import fetch_lfw_people
 
@@ -221,7 +229,12 @@ class Quantum:
         for x, y in zip(x_val, y_val):
             self.dataset["train"][y].append(x)
 
-    def qsvm_train(self, feature_map_type=0): # TODO: Comments
+    def qsvm_train(self, feature_map_type=0):
+        """Train QSVM model
+
+        :param feature_map_type: Feature_map type from 0 to 3
+        :type feature_map_type: int
+        """
         self.logger.info("Preparing QSVM Model dataset")
         # Get dataset if needed
         if not self.dataset:
