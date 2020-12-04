@@ -33,7 +33,7 @@ class Quantum:
     :type plt_show: (list, tuple)
     """
 
-    def __init__(self, face_shape_predict_model, resize_cover=(32, 32), num_of_shots=8192, crop_type=0,
+    def __init__(self, resize_cover=(32, 32), num_of_shots=8192, face_shape_predict_model=None, crop_type=0,
                  plt_show=True, log_file="logs.log", log_level=logging.DEBUG):
         self.logger = init_logger(log_file, log_level, __name__)
         self.logger.info("Initializing Quantum class")

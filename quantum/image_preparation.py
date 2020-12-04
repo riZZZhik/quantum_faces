@@ -45,12 +45,16 @@ TEMPLATE_INFO = np.float32([
 
 
 class ImagePreparation:
-    def __init__(self, face_shape_predict_model='shape_predictor_68_face_landmarks.dat'):
+    def __init__(self, face_shape_predict_model=None):
         tpl_min, tpl_max = np.min(TEMPLATE_INFO, axis=0), np.max(TEMPLATE_INFO, axis=0)
         self.minmax_template = (TEMPLATE_INFO - tpl_min) / (tpl_max - tpl_min)
 
-        self.face_detector = dlib.get_frontal_face_detector()
-        self.face_shape_predictor = dlib.shape_predictor(face_shape_predict_model)
+        if face_shape_predict_model:
+            self.face_detector = dlib.get_frontal_face_detector()
+            self.face_shape_predictor = dlib.shape_predictor(face_shape_predict_model)
+        else:
+            self.face_detector = None
+            self.face_shape_predictor = None
 
         self.inner_eyes_and_bottom_lip = [39, 42, 57]
 
@@ -68,6 +72,7 @@ class ImagePreparation:
         return images_path
 
     def crop_faces(self, image):
+        assert self.face_detector, "You didn't given face_shape_predict_model path to class"
         image_array = np.array(image)
         locations = self.get_face_detection(image_array)
 
@@ -107,6 +112,7 @@ class ImagePreparation:
         :type frame: <type 'numpy.ndarray'>
         :return: enumerate list of rectangles of detected faces
         """
+        assert self.face_detector, "You didn't given face_shape_predict_model path to class"
 
         detection = self.face_detector(frame, 1)
         if len(detection):
@@ -119,6 +125,7 @@ class ImagePreparation:
         :type face_image: <type 'numpy.ndarray'>
         :return: list with 68-points  coordinates (x,y)
         """
+        assert self.face_detector, "You didn't given face_shape_predict_model path to class"
 
         face_detection = self.get_face_detection(face_image)
         if face_detection is not None:
@@ -133,6 +140,7 @@ class ImagePreparation:
         :type face_image: <type 'numpy.ndarray'>
         :return: aligned frame
         """
+        assert self.face_detector, "You didn't given face_shape_predict_model path to class"
 
         face_shape_coordinates = np.float32(self.get_face_shape_coordinates(face_image))
         if face_shape_coordinates is not None:
@@ -145,6 +153,7 @@ class ImagePreparation:
     def norm_images_from_disk(self, images_path, crop_type, resize_size=(32, 32)):
         assert type(resize_size) in (list, tuple) and len(resize_size) == 2, \
             "resize_size type should be list or tuple and length == 2"
+        assert crop_type or self.face_detector, "You didn't given face_shape_predict_model path to class"
 
         images_path = self.get_paths_to_images(images_path)
 

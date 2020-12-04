@@ -2,7 +2,8 @@ from quantum import Quantum
 
 
 if __name__ == "__main__":
-    q = Quantum('quantum/shape_predictor_68_face_landmarks.dat', crop_type=2, log_file="logs.log")
+    q = Quantum(crop_type=2, face_shape_predict_model='quantum/shape_predictor_68_face_landmarks.dat',
+                log_file="logs.log")
 
     q.qsvm_train()
 
