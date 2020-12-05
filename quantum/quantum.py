@@ -2,7 +2,8 @@ import logging
 
 import matplotlib.pyplot as plt
 import numpy as np
-from qiskit import IBMQ, QuantumCircuit, ClassicalRegister, QuantumRegister, BasicAer
+from psutil import virtual_memory
+from qiskit import IBMQ, QuantumCircuit, ClassicalRegister, QuantumRegister
 from qiskit import execute
 from qiskit.aqua import QuantumInstance
 from qiskit.aqua.algorithms import QSVM
@@ -66,7 +67,7 @@ class Quantum:
         """
         self.logger.info(f"Generating {len(norm_images)} circuits from images")
         circuits = []
-        for i, norm_image in enumerate(norm_images):
+        for image_id, norm_image in enumerate(norm_images):
             # Encode
             anc = QuantumRegister(1, "anc")
             img = QuantumRegister(11, "img")
@@ -89,7 +90,7 @@ class Quantum:
 
             circuits.append(qc)
 
-            self.logger.debug(f"Generated {i}/{len(norm_images)} circuit")
+            self.logger.debug(f"Generated {image_id}/{len(norm_images)} circuit, used {virtual_memory().percent}% RAM")
 
         self.logger.debug(f"Generated {len(norm_images)} circuits from images")
         return circuits
