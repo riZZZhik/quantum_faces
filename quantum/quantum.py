@@ -15,7 +15,7 @@ from .all_pairs import AllPairs
 from .frqi import c10ry
 from .image_preparation import ImagePreparation
 from .quantum_edge_detection import quantum_edge_detection as qed
-from .swap import swap_12
+from .swap import swap
 from .utils import init_logger
 
 
@@ -42,7 +42,7 @@ class Quantum:
         assert crop_type in range(3), "crop_type should be in [0, 1, 2]"
 
         # Class variables
-        self.image_prep = ImagePreparation(face_shape_predict_model)  # TODO: No face_shape_predict_model path
+        self.image_prep = ImagePreparation(face_shape_predict_model)
         self.resize_size = resize_cover
         self.numOfShots = num_of_shots
         self.crop_type = crop_type
@@ -59,8 +59,8 @@ class Quantum:
 
         self.logger.debug("Initialized Quantum class")
 
-    def cities_encode(self, norm_images):
-        """Generate circuits from images. Method taken from citiesatnight git repository
+    def encode(self, norm_images):
+        """Generate circuits from images. Method taken from https://github.com/Shedka/citiesatnight
 
         :param norm_images: List of images, normalized using ImagePreparation.image_normalization method.
         :type norm_images: list or tuple
@@ -95,7 +95,7 @@ class Quantum:
         self.logger.debug(f"Generated {len(norm_images)} circuits from images")
         return circuits
 
-    def generate_images(self, images_path: (list, tuple, str)):
+    def decode_to_images(self, images_path: (list, tuple, str)):
         """Generate images on IBMQ.
 
         :param images_path: Paths to images, or to dir with them
@@ -120,7 +120,7 @@ class Quantum:
                         plt.imshow(image)
                         plt.show()
 
-        circuits = self.cities_encode(norm_images)
+        circuits = self.encode(norm_images)
         generated_images = []
         for image_id, qc, norm_image in enumerate(zip(circuits, norm_images)):
             result = execute(qc, self.backend, shots=self.numOfShots, backend_options={"fusion_enable": True}).result()
@@ -192,12 +192,12 @@ class Quantum:
                 c10ry(qc, 2 * norm_images[1][i], format(i, '010b'), original[0], anc[0],
                       [original[j] for j in range(1, len(original))])
 
-        swap = swap_12(qc, target_qubit, ref, original, c, self.backend, self.numOfShots)
+        swap = swap(qc, target_qubit, ref, original, c, self.backend, self.numOfShots)
 
         self.logger.info("Swap results ({} / {}), on images {}, {}".format(*swap.values(), *images_path))
         return swap
 
-    def get_dataset(self):
+    def get_face_dataset(self):
         """Get faces dataset from sklearn fetch_lfw_people and save it to self.dataset"""
         from sklearn.model_selection import train_test_split
         from sklearn.datasets import fetch_lfw_people
@@ -233,7 +233,7 @@ class Quantum:
         for x, y in zip(x_val, y_val):
             self.dataset["train"][y].append(x)
 
-    def qsvm_train(self, feature_map_type=0):
+    def train_qsvm(self, feature_map_type=0):
         """Train QSVM model
 
         :param feature_map_type: Feature_map type from 0 to 3
@@ -242,7 +242,7 @@ class Quantum:
         self.logger.info("Preparing QSVM Model dataset")
         # Get dataset if needed
         if not self.dataset:
-            self.get_dataset()
+            self.get_face_dataset()
 
         # Normalize dataset images
         for key in self.dataset:
@@ -253,7 +253,7 @@ class Quantum:
         # Generate circuits from dataset images
         for key in self.dataset_circuits:
             for i in self.dataset_circuits[key]:
-                self.dataset_circuits[key][i] = self.cities_encode(self.dataset_circuits[key][i])
+                self.dataset_circuits[key][i] = self.encode(self.dataset_circuits[key][i])
 
         # Get datapoints from val dataset
         datapoints, class_to_label = split_dataset_to_data_and_labels(self.dataset["val"])

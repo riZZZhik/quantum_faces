@@ -1,7 +1,7 @@
 from qiskit import execute
 
 
-def swap_12(circuit, q0, q1, q2, classic, backend, num_of_shots):
+def swap(circuit, q0, q1, q2, classic, backend, num_of_shots):
     circuit.tdg(q0[0])
     circuit.h(q0[0])
 
