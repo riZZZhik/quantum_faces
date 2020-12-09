@@ -1,8 +1,0 @@
-matplotlib
-numpy
-opencv-python
-Pillow
-python-resize-image
-
-dlib
-qiskit==0.13.0
