@@ -7,6 +7,8 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from facenet_pytorch import InceptionResnetV1
+from sklearn.datasets import fetch_lfw_people
+from sklearn.model_selection import train_test_split
 from torch.optim import lr_scheduler
 
 from .quantumnet import Quantumnet
@@ -31,6 +33,10 @@ class Quantum():
 
         self.dataset = None
         self.dataset_sizes = None
+        self.num_classes = None
+
+        # Get dataset
+        self.get_face_dataset()
 
         # Init quantum
         self.backend = qml.device('default.qubit', wires=nqubits)
@@ -42,18 +48,15 @@ class Quantum():
 
         # Init facenet
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-        self.logger.info(f'Running on device: {self.device}')
+        self.logger.info(f'Running PyTorch on device: {self.device}')
 
-        self.model = InceptionResnetV1(pretrained='vggface2')
+        # self.model = InceptionResnetV1(classify=True, num_classes=self.num_classes, device=self.device)
+        self.model = InceptionResnetV1(pretrained="vggface2", device=self.device)
 
         for param in self.model.parameters():
             param.requires_grad = False
-
         self.model.fc = self.quantumnet
-
         self.model = self.model.to(self.device)
-
-        self.logger.debug("Initialized Quantum class")
 
         # Init training variables
         self.criterion = nn.CrossEntropyLoss()
@@ -84,34 +87,43 @@ class Quantum():
 
     def get_face_dataset(self):
         """Get faces dataset from sklearn fetch_lfw_people and save it to self.dataset"""
-        from sklearn.model_selection import train_test_split
-        from sklearn.datasets import fetch_lfw_people
-
         self.logger.info("Initializing sklearn fetch_lfw_people dataset")
-        # Load data
-        lfw_dataset = fetch_lfw_people(min_faces_per_person=100)
 
-        # Save train, test and val datasets to self.dataset
-        _, h, w = lfw_dataset.images.shape
+        # Load data
+        lfw_dataset = fetch_lfw_people(min_faces_per_person=100, color=True)
+
+        # Save and split data
+        _, h, w, _ = lfw_dataset.images.shape
         x = lfw_dataset.images[:-40]
         y = lfw_dataset.target[:-40]
-        n_components = len(lfw_dataset.target_names)
+        self.num_classes = len(lfw_dataset.target_names)
 
         x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.25)
         x_val, y_val = lfw_dataset.images[-40:], lfw_dataset.target[-40:]
 
+        # Transform data
+        # transform = transforms.Compose([
+        #     np.float32,
+        #     transforms.ToTensor(),
+        #     fixed_image_standardization
+        # ])
+        #
+        # x_train = [transform(Image.fromarray((img*255).astype(np.uint8))) for img in x_train]
+        # x_test = [transform(Image.fromarray((img*255).astype(np.uint8))) for img in x_test]
+        # x_val = [transform(Image.fromarray((img*255).astype(np.uint8))) for img in x_val]
+
+        # Save data so self variables
         self.dataset = {
-            "train": [x_train, y_train],
-            "test": [x_test, y_test],
-            "val": [x_val, y_val],
-            "n_components": n_components
+            "train": [[x, y] for x, y in zip(x_train, y_train)],
+            "test": [[x, y] for x, y in zip(x_test, y_test)],
+            "val": [[x, y] for x, y in zip(x_val, y_val)]
         }
-        self.dataset_sizes = {x: len(self.dataset[x]) for x in self.dataset}
+        self.dataset_sizes = {x: len(self.dataset[x]) for x in self.dataset.keys()}
 
     def train(self, num_epochs, batch_size):
-        # Get dataset if needed
-        if not self.dataset:
-            self.get_face_dataset()
+        # Initialize dataloader
+        dataloaders = {x: torch.utils.data.DataLoader(self.dataset[x], batch_size=batch_size, shuffle=True,
+                                                      num_workers=0) for x in ['train', 'val']}
 
         since = time.time()
         best_model_wts = copy.deepcopy(self.model.state_dict())
@@ -136,7 +148,7 @@ class Quantum():
                 running_corrects = 0
                 n_batches = self.dataset_sizes[phase] // batch_size
                 it = 0
-                for x, y in self.dataset[phase]:
+                for x, y in dataloaders[phase]:
                     since_batch = time.time()
                     batch_size_ = len(x)
                     x = x.to(self.device)
@@ -157,16 +169,14 @@ class Quantum():
                     running_loss += loss.item() * batch_size_
                     batch_corrects = torch.sum(preds == labels.data).item()
                     running_corrects += batch_corrects
-                    print('Phase: {} Epoch: {}/{} Iter: {}/{} Batch time: {:.4f}'.format(phase, epoch + 1, num_epochs,
-                                                                                         it + 1, n_batches + 1,
-                                                                                         time.time() - since_batch),
-                          end='\r', flush=True)
+                    self.logger.info('Phase: {} Epoch: {}/{} Iter: {}/{} Batch time: {:.4f}'.format(
+                        phase, epoch + 1, num_epochs, it + 1, n_batches + 1, time.time() - since_batch))
                     it += 1
 
                 # Print epoch results
                 epoch_loss = running_loss / self.dataset_sizes[phase]
                 epoch_acc = running_corrects / self.dataset_sizes[phase]
-                print('Phase: {} Epoch: {}/{} Loss: {:.4f} Acc: {:.4f}             '.format(
+                self.logger.info('Phase: {} Epoch: {}/{} Loss: {:.4f} Acc: {:.4f}'.format(
                     'train' if phase == 'train' else 'val  ', epoch + 1, num_epochs, epoch_loss, epoch_acc))
 
                 # Check if this is the best model wrt previous epochs
