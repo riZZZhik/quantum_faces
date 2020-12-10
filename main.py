@@ -1,2 +1,4 @@
+from quantum import Quantum
+
 if __name__ == "__main__":
-    print("Hello World!")
+    q = Quantum()
