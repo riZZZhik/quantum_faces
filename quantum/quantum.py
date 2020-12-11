@@ -8,32 +8,29 @@ import torch.nn as nn
 import torch.optim as optim
 from facenet_pytorch import InceptionResnetV1
 from sklearn.datasets import fetch_lfw_people
-from sklearn.model_selection import train_test_split
 from torch.optim import lr_scheduler
 
 from .quantumnet import Quantumnet
-from .utils import init_logger
+from .utils import init_logger, norm_image  # FIXME: Logger is not working
 from .utils_quantum import H_layer, RY_layer, entangling_layer
 
 
 class Quantum():
-    def __init__(self, nqubits=32, q_depth=4, q_delta=0.01, max_layers=15, filtered_classes=[0, 1, 2, 3, 4, 5, 6],
-                 step=0.001, gamma_lr_scheduler=.1,
+    def __init__(self, nqubits=32, q_depth=4, q_delta=0.01, max_layers=15, step=0.001, gamma_lr_scheduler=.1,
                  log_file="logs.log", log_level=logging.DEBUG):
         # Init logger
         self.logger = init_logger(log_file, log_level, __name__)
-        self.logger.info("Initializing Quantum class")
+        print("Initializing Quantum class")
 
         # Init variables
         self.nqubits = nqubits
         self.q_depth = q_depth
         self.q_delta = q_delta
         self.max_layers = max_layers
-        self.filtered_classes = filtered_classes
 
-        self.dataset = None
-        self.dataset_sizes = None
-        self.num_classes = None
+        self.dataset = {}
+        self.dataset_sizes = {}
+        self.num_classes = 0
 
         # Get dataset
         self.get_face_dataset()
@@ -44,17 +41,17 @@ class Quantum():
         self.q_net = self._get_q_net_function()
 
         self.quantumnet = Quantumnet(self.backend, self.q_net, self.nqubits, self.q_delta,
-                                     self.max_layers, self.filtered_classes)
+                                     self.max_layers, list(range(self.num_classes)))
 
         # Init facenet
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-        self.logger.info(f'Running PyTorch on device: {self.device}')
+        print(f'Running PyTorch on device: {self.device}')
 
-        # self.model = InceptionResnetV1(classify=True, num_classes=self.num_classes, device=self.device)
-        self.model = InceptionResnetV1(pretrained="vggface2", device=self.device)
+        self.model = InceptionResnetV1(device=self.device)
 
-        for param in self.model.parameters():
-            param.requires_grad = False
+        # for param in self.model.parameters():  # FIXME: Error with freezed facenet
+        #     param.requires_grad = False
+        
         self.model.fc = self.quantumnet
         self.model = self.model.to(self.device)
 
@@ -87,36 +84,21 @@ class Quantum():
 
     def get_face_dataset(self):
         """Get faces dataset from sklearn fetch_lfw_people and save it to self.dataset"""
-        self.logger.info("Initializing sklearn fetch_lfw_people dataset")
+        print("Initializing sklearn fetch_lfw_people dataset")
 
         # Load data
         lfw_dataset = fetch_lfw_people(min_faces_per_person=100, color=True)
 
         # Save and split data
         _, h, w, _ = lfw_dataset.images.shape
-        x = lfw_dataset.images[:-40]
-        y = lfw_dataset.target[:-40]
-        self.num_classes = len(lfw_dataset.target_names)
-
-        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.25)
+        x, y = lfw_dataset.images[:-40], lfw_dataset.target[:-40]
         x_val, y_val = lfw_dataset.images[-40:], lfw_dataset.target[-40:]
-
-        # Transform data
-        # transform = transforms.Compose([
-        #     np.float32,
-        #     transforms.ToTensor(),
-        #     fixed_image_standardization
-        # ])
-        #
-        # x_train = [transform(Image.fromarray((img*255).astype(np.uint8))) for img in x_train]
-        # x_test = [transform(Image.fromarray((img*255).astype(np.uint8))) for img in x_test]
-        # x_val = [transform(Image.fromarray((img*255).astype(np.uint8))) for img in x_val]
+        self.num_classes = len(lfw_dataset.target_names)
 
         # Save data so self variables
         self.dataset = {
-            "train": [[x, y] for x, y in zip(x_train, y_train)],
-            "test": [[x, y] for x, y in zip(x_test, y_test)],
-            "val": [[x, y] for x, y in zip(x_val, y_val)]
+            "train": [[norm_image(img), label] for img, label in zip(x, y)],
+            "val": [[norm_image(img), label] for img, label in zip(x_val, y_val)]
         }
         self.dataset_sizes = {x: len(self.dataset[x]) for x in self.dataset.keys()}
 
@@ -169,14 +151,14 @@ class Quantum():
                     running_loss += loss.item() * batch_size_
                     batch_corrects = torch.sum(preds == labels.data).item()
                     running_corrects += batch_corrects
-                    self.logger.info('Phase: {} Epoch: {}/{} Iter: {}/{} Batch time: {:.4f}'.format(
+                    print('Phase: {} Epoch: {}/{} Iter: {}/{} Batch time: {:.4f}'.format(
                         phase, epoch + 1, num_epochs, it + 1, n_batches + 1, time.time() - since_batch))
                     it += 1
 
                 # Print epoch results
                 epoch_loss = running_loss / self.dataset_sizes[phase]
                 epoch_acc = running_corrects / self.dataset_sizes[phase]
-                self.logger.info('Phase: {} Epoch: {}/{} Loss: {:.4f} Acc: {:.4f}'.format(
+                print('Phase: {} Epoch: {}/{} Loss: {:.4f} Acc: {:.4f}'.format(
                     'train' if phase == 'train' else 'val  ', epoch + 1, num_epochs, epoch_loss, epoch_acc))
 
                 # Check if this is the best model wrt previous epochs
