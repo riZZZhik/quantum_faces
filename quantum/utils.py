@@ -8,7 +8,7 @@ from facenet_pytorch import fixed_image_standardization
 from torchvision import transforms
 
 
-def init_logger(log_file, log_level, log_name, date_format=None):
+def init_logger(log_file=None, log_level=logging.INFO, log_name=None, date_format=None):
     if date_format is None:
         date_format = {
             "format": '%(asctime)s - %(levelname)s: %(message)s',

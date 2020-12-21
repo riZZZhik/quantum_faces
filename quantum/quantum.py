@@ -1,5 +1,6 @@
 import copy
 import logging
+import sys
 import time
 
 import pennylane as qml
@@ -40,7 +41,13 @@ class Quantum():
         print(f'Running PyTorch on device: {self.device}')
 
         # Init quantum
-        self.backend = qml.device('default.qubit', wires=nqubits)
+        try:
+            self.backend = qml.device('default.qubit', wires=nqubits)
+        except MemoryError as e:
+            self.logger.error(e)
+            print('Try to change overcommit_memory settings with command:\n'
+                  'sudo sh -c "/usr/bin/echo 1 > /proc/sys/vm/overcommit_memory"')
+            sys.exit(-1)
 
         self.q_net = self._get_q_net_function()
         self.quantumnet = Quantumnet(self.device, self.q_net, self.nqubits, self.q_delta,
