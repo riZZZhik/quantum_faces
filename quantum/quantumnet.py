@@ -19,6 +19,8 @@ class Quantumnet(nn.Module):
         self.q_params = nn.Parameter(q_delta * torch.randn(max_layers * n_qubits))
         self.post_net = nn.Linear(n_qubits, len(filtered_classes))
 
+        self.print = True
+
     def forward(self, input_features):
         pre_out = self.pre_net(input_features)
         q_in = torch.tanh(pre_out) * np.pi / 2.0
@@ -28,5 +30,9 @@ class Quantumnet(nn.Module):
         q_out = q_out.to(self.device)
         for elem in q_in:
             q_out_elem = self.q_net(elem, self.q_params).float().unsqueeze(0)
+            if self.print:
+                print(self.q_net.draw())
+                self.q_net.print_applied()
+                self.print = False
             q_out = torch.cat((q_out, q_out_elem))
         return self.post_net(q_out)
