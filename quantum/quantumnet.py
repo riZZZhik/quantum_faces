@@ -5,10 +5,10 @@ import torch.nn as nn
 
 
 class Quantumnet(nn.Module):
-    def __init__(self, backend, q_net, n_qubits, q_delta, max_layers, filtered_classes):
+    def __init__(self, device, q_net, n_qubits, q_delta, max_layers, filtered_classes):
         super().__init__()
 
-        self.backend = backend
+        self.device = device
         self.q_net = q_net
         self.n_qubits = n_qubits
         self.q_delta = q_delta
@@ -25,7 +25,7 @@ class Quantumnet(nn.Module):
 
         # Apply the quantum circuit to each element of the batch, and append to q_out
         q_out = torch.Tensor(0, self.n_qubits)
-        q_out = q_out.to(self.backend)
+        q_out = q_out.to(self.device)
         for elem in q_in:
             q_out_elem = self.q_net(elem, self.q_params).float().unsqueeze(0)
             q_out = torch.cat((q_out, q_out_elem))

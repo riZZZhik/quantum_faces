@@ -35,34 +35,33 @@ class Quantum():
         # Get dataset
         self.get_face_dataset()
 
+        # Init torch device
+        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
+        print(f'Running PyTorch on device: {self.device}')
+
         # Init quantum
         self.backend = qml.device('default.qubit', wires=nqubits)
 
         self.q_net = self._get_q_net_function()
-
-        self.quantumnet = Quantumnet(self.backend, self.q_net, self.nqubits, self.q_delta,
+        self.quantumnet = Quantumnet(self.device, self.q_net, self.nqubits, self.q_delta,
                                      self.max_layers, list(range(self.num_classes)))
 
         # Init facenet
-        self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
-        print(f'Running PyTorch on device: {self.device}')
-
-        self.model = InceptionResnetV1(device=self.device)
+        self.model = InceptionResnetV1(classify=True, num_classes=nqubits)
+        self.model.logits = self.quantumnet
 
         # for param in self.model.parameters():  # FIXME: Error with freezed facenet
         #     param.requires_grad = False
-        
-        self.model.fc = self.quantumnet
         self.model = self.model.to(self.device)
 
         # Init training variables
         self.criterion = nn.CrossEntropyLoss()
-        self.optimizer = optim.Adam(self.model.fc.parameters(), lr=step)
+        self.optimizer = optim.Adam(self.model.logits.parameters(), lr=step)
         self.exp_lr_scheduler = lr_scheduler.StepLR(self.optimizer, step_size=3, gamma=gamma_lr_scheduler)
 
     def _get_q_net_function(self):
         @qml.qnode(self.backend, interface='torch')
-        def q_net(q_in, q_weights_flat):
+        def q_net_circuit(q_in, q_weights_flat):
             # Reshape weights
             q_weights = q_weights_flat.reshape(self.max_layers, self.nqubits)
 
@@ -80,7 +79,7 @@ class Quantum():
             # Expectation values in the Z basis
             return [qml.expval(qml.PauliZ(i)) for i in range(self.nqubits)]
 
-        return q_net
+        return q_net_circuit
 
     def get_face_dataset(self):
         """Get faces dataset from sklearn fetch_lfw_people and save it to self.dataset"""
