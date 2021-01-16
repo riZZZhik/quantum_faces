@@ -8,16 +8,16 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from facenet_pytorch import InceptionResnetV1
-from sklearn.datasets import fetch_lfw_people
 from torch.optim import lr_scheduler
 
 from .quantumnet import Quantumnet
-from .utils import init_logger, norm_image  # FIXME: Logger is not working
+from .utils import init_logger, get_celeba_generator, norm_image  # FIXME: Logger is not working
 from .utils_quantum import H_layer, RY_layer, entangling_layer
 
 
-class Quantum():
-    def __init__(self, nqubits=32, q_depth=4, q_delta=0.01, max_layers=15, step=0.001, gamma_lr_scheduler=.1,
+class Quantum:  # TODO: Comments
+    def __init__(self, dataset_dir="dataset",
+                 nqubits=32, q_depth=4, q_delta=0.01, max_layers=15, step=0.001, gamma_lr_scheduler=.1,
                  log_file="logs.log", log_level=logging.DEBUG):
         # Init logger
         self.logger = init_logger(log_file, log_level, __name__)
@@ -29,12 +29,10 @@ class Quantum():
         self.q_delta = q_delta
         self.max_layers = max_layers
 
-        self.dataset = {}
+        self.dataset_dir = dataset_dir
+        self.dataset_generators = None
         self.dataset_sizes = {}
         self.num_classes = 0
-
-        # Get dataset
-        self.get_face_dataset()
 
         # Init torch device
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -88,30 +86,11 @@ class Quantum():
 
         return q_net_circuit
 
-    def get_face_dataset(self):
-        """Get faces dataset from sklearn fetch_lfw_people and save it to self.dataset"""
-        print("Initializing sklearn fetch_lfw_people dataset")
-
-        # Load data
-        lfw_dataset = fetch_lfw_people(min_faces_per_person=100, color=True)
-
-        # Save and split data
-        _, h, w, _ = lfw_dataset.images.shape
-        x, y = lfw_dataset.images[:-40], lfw_dataset.target[:-40]
-        x_val, y_val = lfw_dataset.images[-40:], lfw_dataset.target[-40:]
-        self.num_classes = len(lfw_dataset.target_names)
-
-        # Save data so self variables
-        self.dataset = {
-            "train": [[norm_image(img), label] for img, label in zip(x, y)],
-            "val": [[norm_image(img), label] for img, label in zip(x_val, y_val)]
-        }
-        self.dataset_sizes = {x: len(self.dataset[x]) for x in self.dataset.keys()}
-
     def train(self, num_epochs, batch_size):
         # Initialize dataloader
-        dataloaders = {x: torch.utils.data.DataLoader(self.dataset[x], batch_size=batch_size, shuffle=True,
-                                                      num_workers=0) for x in ['train', 'val']}
+        if self.dataset_generators is None:
+            self.dataset_generators, self.dataset_sizes = \
+                get_celeba_generator(batch_size, "dataset/CelebA", "dataset/labels.txt", 40)
 
         since = time.time()
         best_model_wts = copy.deepcopy(self.model.state_dict())
@@ -136,7 +115,8 @@ class Quantum():
                 running_corrects = 0
                 n_batches = self.dataset_sizes[phase] // batch_size
                 it = 0
-                for x, y in dataloaders[phase]:
+                for x, y in self.dataset_generators[phase]():
+                    print(x.shape)
                     since_batch = time.time()
                     batch_size_ = len(x)
                     x = x.to(self.device)

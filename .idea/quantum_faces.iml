@@ -3,6 +3,8 @@
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
       <excludeFolder url="file://$MODULE_DIR$/examples" />
+      <excludeFolder url="file://$MODULE_DIR$/CelebA" />
+      <excludeFolder url="file://$MODULE_DIR$/dataset/CelebA" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.7 (quantum_faces)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />

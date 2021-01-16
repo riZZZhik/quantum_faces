@@ -257,3 +257,4 @@ fabric.properties
 # User ignores
 gen_*.png
 examples/
+dataset/CelebA
