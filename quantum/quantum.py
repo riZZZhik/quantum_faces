@@ -11,12 +11,12 @@ from facenet_pytorch import InceptionResnetV1
 from torch.optim import lr_scheduler
 
 from .quantumnet import Quantumnet
-from .utils import init_logger, get_celeba_generator, norm_image  # FIXME: Logger is not working
+from .utils import init_logger, get_celeba_generator  # FIXME: Logger is not working
 from .utils_quantum import H_layer, RY_layer, entangling_layer
 
 
 class Quantum:  # TODO: Comments
-    def __init__(self, dataset_dir="dataset",
+    def __init__(self, images_dir, labels_path,
                  nqubits=32, q_depth=4, q_delta=0.01, max_layers=15, step=0.001, gamma_lr_scheduler=.1,
                  log_file="logs.log", log_level=logging.DEBUG):
         # Init logger
@@ -29,10 +29,9 @@ class Quantum:  # TODO: Comments
         self.q_delta = q_delta
         self.max_layers = max_layers
 
-        self.dataset_dir = dataset_dir
-        self.dataset_generators = None
-        self.dataset_sizes = {}
-        self.num_classes = 0
+        # Init dataset
+        self.dataset_generators, self.dataset_sizes, self.num_classes = \
+            get_celeba_generator(nqubits, images_dir, labels_path, 40)
 
         # Init torch device
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -86,12 +85,7 @@ class Quantum:  # TODO: Comments
 
         return q_net_circuit
 
-    def train(self, num_epochs, batch_size):
-        # Initialize dataloader
-        if self.dataset_generators is None:
-            self.dataset_generators, self.dataset_sizes = \
-                get_celeba_generator(batch_size, "dataset/CelebA", "dataset/labels.txt", 40)
-
+    def train(self, num_epochs):
         since = time.time()
         best_model_wts = copy.deepcopy(self.model.state_dict())
         best_acc = 0.0
@@ -113,14 +107,13 @@ class Quantum:  # TODO: Comments
                     # Iteration loop
                 running_loss = 0.0
                 running_corrects = 0
-                n_batches = self.dataset_sizes[phase] // batch_size
+                n_batches = self.dataset_sizes[phase] // self.nqubits
                 it = 0
                 for x, y in self.dataset_generators[phase]():
                     print(x.shape)
                     since_batch = time.time()
                     batch_size_ = len(x)
                     x = x.to(self.device)
-                    labels = torch.tensor(y)
                     labels = labels.to(self.device)
                     self.optimizer.zero_grad()
 

@@ -98,5 +98,6 @@ def get_celeba_generator(batch_size, images_dir, labels_path, dataset_delta=None
         "train": len(x),
         "test": len(x_test)
     }
+    num_classes = max(max(y), max(y_test))
 
-    return generators, sizes
+    return generators, sizes, num_classes
