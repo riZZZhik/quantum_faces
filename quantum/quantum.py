@@ -114,7 +114,7 @@ class Quantum:  # TODO: Comments
                     since_batch = time.time()
                     batch_size_ = len(x)
                     x = x.to(self.device)
-                    labels = labels.to(self.device)
+                    labels = y.to(self.device)
                     self.optimizer.zero_grad()
 
                     # Track/compute gradient and make an optimization step only when training
