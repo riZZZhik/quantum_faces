@@ -31,7 +31,7 @@ class Quantumnet(nn.Module):
         for elem in q_in:
             q_out_elem = self.q_net(elem, self.q_params).float().unsqueeze(0)
             if self.print:
-                print(self.q_net.draw())
+                # print(self.q_net.draw())  # FIXME
                 self.q_net.print_applied()
                 self.print = False
             q_out = torch.cat((q_out, q_out_elem))
