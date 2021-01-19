@@ -16,8 +16,7 @@ from .utils_quantum import H_layer, RY_layer, entangling_layer
 
 
 class Quantum:  # TODO: Comments
-    def __init__(self, images_dir, labels_path,
-                 nqubits=32, q_depth=4, q_delta=0.01, max_layers=15, step=0.001, gamma_lr_scheduler=.1,
+    def __init__(self, nqubits=32, q_depth=4, q_delta=0.01, max_layers=15, step=0.001, gamma_lr_scheduler=.1,
                  log_file="logs.log"):
         # Init logger
         if log_file:
@@ -30,10 +29,6 @@ class Quantum:  # TODO: Comments
         self.q_delta = q_delta
         self.max_layers = max_layers
 
-        # Init dataset
-        self.dataset_generators, self.dataset_sizes, self.num_classes = \
-            get_celeba_generator(nqubits, images_dir, labels_path, 40)
-
         # Init torch device
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
         logger.info(f'Running PyTorch on device: {self.device}')
@@ -44,7 +39,7 @@ class Quantum:  # TODO: Comments
         except MemoryError as e:
             logger.critical(e)
             logger.critical('Try to change overcommit_memory settings with command:\n'
-                                 'sudo sh -c "/usr/bin/echo 1 > /proc/sys/vm/overcommit_memory"')
+                            'sudo sh -c "/usr/bin/echo 1 > /proc/sys/vm/overcommit_memory"')
             sys.exit(-1)
 
         self.q_net = self._get_q_net_function()
@@ -86,7 +81,11 @@ class Quantum:  # TODO: Comments
 
         return q_net_circuit
 
-    def train(self, num_epochs):
+    def train(self, num_epochs, batch_size, images_dir, labels_path):
+        # Init dataset
+        self.dataset_generators, self.dataset_sizes, self.num_classes = \
+            get_celeba_generator(batch_size, 40)
+
         since = time.time()
         best_model_wts = copy.deepcopy(self.model.state_dict())
         best_acc = 0.0
