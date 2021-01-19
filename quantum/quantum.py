@@ -16,7 +16,8 @@ from .utils_quantum import H_layer, RY_layer, entangling_layer
 
 
 class Quantum:  # TODO: Comments
-    def __init__(self, nqubits=32, q_depth=4, q_delta=0.01, max_layers=15, step=0.001, gamma_lr_scheduler=.1,
+    def __init__(self, images_dir, labels_path, batch_size,
+                 nqubits=32, q_depth=4, q_delta=0.01, max_layers=15, step=0.001, gamma_lr_scheduler=.1,
                  log_file="logs.log"):
         # Init logger
         if log_file:
@@ -24,10 +25,17 @@ class Quantum:  # TODO: Comments
         logger.info("Initializing Quantum class")
 
         # Init variables
+        self.batch_size = batch_size
+
         self.nqubits = nqubits
         self.q_depth = q_depth
         self.q_delta = q_delta
         self.max_layers = max_layers
+
+        # Init dataset
+        logger.info("Initializing dataset")
+        self.dataset_generators, self.dataset_sizes, self.num_classes = \
+            get_celeba_generator(batch_size, images_dir, labels_path, 40)
 
         # Init torch device
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
@@ -81,11 +89,7 @@ class Quantum:  # TODO: Comments
 
         return q_net_circuit
 
-    def train(self, num_epochs, batch_size, images_dir, labels_path):
-        # Init dataset
-        self.dataset_generators, self.dataset_sizes, self.num_classes = \
-            get_celeba_generator(batch_size, 40)
-
+    def train(self, num_epochs):
         since = time.time()
         best_model_wts = copy.deepcopy(self.model.state_dict())
         best_acc = 0.0
@@ -107,7 +111,7 @@ class Quantum:  # TODO: Comments
                     # Iteration loop
                 running_loss = 0.0
                 running_corrects = 0
-                n_batches = self.dataset_sizes[phase] // self.nqubits
+                n_batches = self.dataset_sizes[phase] // self.batch_size
                 it = 0
                 for x, y in self.dataset_generators[phase]():
                     since_batch = time.time()

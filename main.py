@@ -1,5 +1,5 @@
 from quantum import Quantum
 
 if __name__ == "__main__":
-    q = Quantum(nqubits=32)
-    q.train(100, 8, "dataset/CelebA", "dataset/labels.txt")
+    q = Quantum("dataset/CelebA", "dataset/labels.txt", batch_size=8, nqubits=32)
+    q.train(100)
