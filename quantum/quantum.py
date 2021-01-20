@@ -16,7 +16,7 @@ from .utils_quantum import H_layer, RY_layer, entangling_layer
 
 
 class Quantum:  # TODO: Comments
-    def __init__(self, images_dir, labels_path, batch_size,
+    def __init__(self, images_dir, labels_path, batch_size, dataset_delta=40, label_max_filter=None,
                  nqubits=32, q_depth=4, q_delta=0.01, max_layers=15, step=0.001, gamma_lr_scheduler=.1,
                  log_file="logs.log"):
         # Init logger
@@ -35,7 +35,7 @@ class Quantum:  # TODO: Comments
         # Init dataset
         logger.info("Initializing dataset")
         self.dataset_generators, self.dataset_sizes, self.num_classes = \
-            get_celeba_generator(batch_size, images_dir, labels_path, 40)
+            get_celeba_generator(batch_size, images_dir, labels_path, dataset_delta, label_max_filter)
 
         # Init torch device
         self.device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')

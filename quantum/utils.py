@@ -34,7 +34,8 @@ def batch(iterable, n=1):
         yield data
 
 
-def get_celeba_generator(batch_size, images_dir, labels_path, dataset_delta=None):  # TODO: Auto download CelebA
+def get_celeba_generator(batch_size, images_dir, labels_path, dataset_delta=None, label_max_filter=None):
+    # TODO: Auto download CelebA
     assert os.path.exists(images_dir), \
         f"Download CelebA from https://www.kaggle.com/jessicali9530/celeba-dataset and save to {images_dir} directory"
 
@@ -47,8 +48,11 @@ def get_celeba_generator(batch_size, images_dir, labels_path, dataset_delta=None
     with open(labels_path) as f:
         for line in f:
             image_path, label = line.split()
-            x.append(image_path)
-            y.append(int(label))
+            if label_max_filter and label < label_max_filter:
+                x.append(image_path)
+                y.append(int(label))
+
+    num_classes = max(y) + 1
 
     # Create test generator if needed
     if dataset_delta:
@@ -75,6 +79,5 @@ def get_celeba_generator(batch_size, images_dir, labels_path, dataset_delta=None
         "train": len(x),
         "test": len(x_test)
     }
-    num_classes = max(max(y), max(y_test))
 
     return generators, sizes, num_classes
