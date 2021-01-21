@@ -69,7 +69,7 @@ def get_celeba_generator(batch_size, images_dir, labels_path, dataset_delta=None
                     logger.warning(f"One from {images} images not found, skipping this batch")
                     continue
 
-        generators["test"] = generator_test
+        generators["val"] = generator_test
 
     # Create train generator
     # noinspection DuplicatedCode
@@ -87,7 +87,7 @@ def get_celeba_generator(batch_size, images_dir, labels_path, dataset_delta=None
     # Save dataset sizes variable
     sizes = {
         "train": len(x),
-        "test": len(x_test)
+        "val": len(x_test)
     }
 
     return generators, sizes, num_classes
