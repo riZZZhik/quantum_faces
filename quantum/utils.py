@@ -1,4 +1,4 @@
-import logging
+from loguru import logger
 import os
 
 import numpy as np
@@ -6,7 +6,6 @@ from PIL import Image
 from facenet_pytorch import fixed_image_standardization
 from torch import from_numpy, Tensor
 from torchvision import transforms
-
 
 # Images
 trans = transforms.Compose([
@@ -60,18 +59,28 @@ def get_celeba_generator(batch_size, images_dir, labels_path, dataset_delta=None
         x_test, y_test = x[-dataset_delta:], y[-dataset_delta:]
         x, y = x[:-dataset_delta], y[:-dataset_delta]
 
+        # noinspection DuplicatedCode
         def generator_test():
             for images, labels in zip(batch(x_test, batch_size), batch(y_test, batch_size)):
-                x_batched = [norm_image(os.path.join(images_dir, image)) for image in images]
-                yield Tensor(x_batched), from_numpy(np.array(labels))
+                try:
+                    x_batched = [norm_image(os.path.join(images_dir, image)) for image in images]
+                    yield Tensor(x_batched), from_numpy(np.array(labels))
+                except FileNotFoundError:
+                    logger.warning(f"One from {images} images not found, skipping this batch")
+                    continue
 
         generators["test"] = generator_test
 
     # Create train generator
+    # noinspection DuplicatedCode
     def generator():
         for images, labels in zip(batch(x, batch_size), batch(y, batch_size)):
-            x_batched = [norm_image(os.path.join(images_dir, image)) for image in images]
-            yield Tensor(x_batched), from_numpy(np.array(labels))
+            try:
+                x_batched = [norm_image(os.path.join(images_dir, image)) for image in images]
+                yield Tensor(x_batched), from_numpy(np.array(labels))
+            except FileNotFoundError:
+                logger.warning(f"One from {images} images not found, skipping this batch")
+                continue
 
     generators["train"] = generator
 
