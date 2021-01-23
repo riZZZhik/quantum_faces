@@ -1,3 +1,6 @@
+import shutil
+import zipfile
+
 from loguru import logger
 import os
 
@@ -34,9 +37,26 @@ def batch(iterable, n=1):
 
 
 def get_celeba_generator(batch_size, images_dir, labels_path, dataset_delta=None, label_max_filter=None):
-    # TODO: Auto download CelebA
-    assert os.path.exists(images_dir), \
-        f"Download CelebA from https://www.kaggle.com/jessicali9530/celeba-dataset and save to {images_dir} directory"
+    # Auto download CelebA
+    if not os.path.exists(images_dir):
+        logger.info(f"No CelebA dataset found in {images_dir}, downloading dataset from server")
+        if os.path.exists("tmp"):
+            del_tmp = False
+        else:
+            os.mkdir("tmp")
+            del_tmp = True
+
+        os.system("mkdir ~/.kaggle")
+        os.system("cp dataset/kaggle.json ~/.kaggle/")
+
+        os.system("kaggle datasets download -d jessicali9530/celeba-dataset -p tmp")
+
+        with zipfile.ZipFile("tmp/celeba-dataset", 'r') as zip_ref:
+            zip_ref.extractall("tmp/")
+
+        shutil.move("tmp/img_align_celeba/img_align_celeba", images_dir)
+        if del_tmp:
+            os.remove("tmp")
 
     # Init function variables
     x, y = [], []

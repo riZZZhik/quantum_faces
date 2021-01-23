@@ -258,3 +258,4 @@ fabric.properties
 gen_*.png
 examples/
 dataset/CelebA
+activate
