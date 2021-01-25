@@ -51,7 +51,7 @@ def get_celeba_generator(batch_size, images_dir, labels_path, dataset_delta=None
 
         os.system("kaggle datasets download -d jessicali9530/celeba-dataset -p tmp")
 
-        with zipfile.ZipFile("tmp/celeba-dataset", 'r') as zip_ref:
+        with zipfile.ZipFile("tmp/celeba-dataset.zip", 'r') as zip_ref:
             zip_ref.extractall("tmp/")
 
         shutil.move("tmp/img_align_celeba/img_align_celeba", images_dir)
