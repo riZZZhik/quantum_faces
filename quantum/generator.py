@@ -33,10 +33,10 @@ class Generator(Sequence):  # TODO: Function to split images in Train and Val ge
                     self.images.append(image_path)
                     self.labels.append(label)
 
-        self.num_classes = max(self.labels)
+        self.num_classes = max(self.labels) + 1
         self.labels = to_categorical(self.labels)
 
-        logger.info(f"Found {len(self.images)} images with {self.num_classes + 1} classes")
+        logger.info(f"Found {len(self.images)} images with {self.num_classes} classes")
 
     def __len__(self):
         return len(self.images) // self.batch_size
@@ -65,7 +65,7 @@ class Generator(Sequence):  # TODO: Function to split images in Train and Val ge
             zip_ref.extractall("tmp/")
         shutil.move("tmp/img_align_celeba/img_align_celeba", self.images_dir)
         if del_tmp:
-            os.remove("tmp")
+            os.system("rm -rf tmp")
 
     def norm_image(self, image_path):
         img = Image.open(image_path)
