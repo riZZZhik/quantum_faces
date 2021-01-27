@@ -2,8 +2,9 @@ import os
 import shutil
 import zipfile
 
+import numpy as np
 from PIL import Image
-from keras.utils import Sequence
+from keras.utils import Sequence, to_categorical
 from loguru import logger
 
 
@@ -33,6 +34,7 @@ class Generator(Sequence):  # TODO: Function to split images in Train and Val ge
                     self.labels.append(label)
 
         self.num_classes = max(self.labels)
+        self.labels = to_categorical(self.labels)
 
         logger.info(f"Found {len(self.images)} images with {self.num_classes + 1} classes")
 
@@ -41,9 +43,9 @@ class Generator(Sequence):  # TODO: Function to split images in Train and Val ge
 
     def __getitem__(self, index):
         images_paths = self.images[index * self.batch_size:(index + 1) * self.batch_size]
-        images = [self.norm_image(os.path.join(self.images_dir, image)) for image in images_paths]
+        images = np.array([self.norm_image(os.path.join(self.images_dir, image)) for image in images_paths])
 
-        labels = self.labels[index * self.batch_size:(index + 1) * self.batch_size]
+        labels = np.array(self.labels[index * self.batch_size:(index + 1) * self.batch_size])
         return images, labels
 
     def download_dataset(self):
@@ -68,4 +70,4 @@ class Generator(Sequence):  # TODO: Function to split images in Train and Val ge
     def norm_image(self, image_path):
         img = Image.open(image_path)
         img = img.resize(self.image_shape[:2])
-        return img
+        return np.array(img)

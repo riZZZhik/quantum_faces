@@ -3,7 +3,8 @@ import sys
 import pennylane as qml
 from keras import Model
 from keras.applications import Xception
-from keras.layers import Dense, Flatten
+from keras.callbacks import ModelCheckpoint
+from keras.layers import Dense, Flatten, Softmax
 from loguru import logger
 
 from .generator import Generator
@@ -34,9 +35,6 @@ class Quantum:  # TODO: Comments
         logger.info("Initializing dataset")
         self.train_generator = Generator(batch_size, image_shape, images_dir, labels_path, label_max_filter)
 
-        # Init torch device
-        # TODO: Init tensorflow device
-
         # Init quantum
         try:
             self.backend = qml.device('default.qubit', wires=nqubits)
@@ -53,10 +51,10 @@ class Quantum:  # TODO: Comments
         x = Flatten()(x)
         x = Dense(nqubits)(x)
         x = Quantumnet(self._get_q_net_function(), self.nqubits, self.q_delta, self.max_layers)(x)
-        predictions = Dense(self.train_generator.num_classes)(x)
+        x = Dense(self.train_generator.num_classes)(x)
+        predictions = Softmax()(x)
 
         self.model = Model(base_model.input, predictions)
-        print(self.model.summary())
 
         if freeze_imagenet:
             for layer in base_model.layers:
@@ -89,4 +87,5 @@ class Quantum:  # TODO: Comments
         return q_net_circuit
 
     def train(self, num_epochs):
-        pass  # TODO: Model training
+        callbacks = [ModelCheckpoint(filepath='checkpoints/model.{epoch:02d}-{accuracy:.2f}.h5', monitor="accuracy")]
+        self.model.fit(self.train_generator, epochs=num_epochs, callbacks=callbacks)
