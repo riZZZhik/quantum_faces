@@ -7,7 +7,7 @@ from keras.utils import Sequence
 from loguru import logger
 
 
-class Generator(Sequence):  #
+class Generator(Sequence):  # TODO: Function to split images in Train and Val generators
     def __init__(self, batch_size, image_shape, images_dir, labels_path, label_max_filter=None):
         assert len(image_shape) == 3, 'Image shape should have 3 dimensions'
 

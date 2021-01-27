@@ -6,12 +6,13 @@ from keras.applications import Xception
 from keras.layers import Dense, Flatten
 from loguru import logger
 
+from .generator import Generator
 from .quantumnet import Quantumnet
 from .utils_quantum import H_layer, RY_layer, entangling_layer
 
 
 class Quantum:  # TODO: Comments
-    def __init__(self, image_shape, images_dir, labels_path, batch_size, dataset_delta=40, label_max_filter=None,
+    def __init__(self, image_shape, images_dir, labels_path, batch_size, label_max_filter=None,
                  nqubits=32, q_depth=4, q_delta=0.01, max_layers=15, log_file="logs.log"):
         # Init logger
         if log_file:
@@ -31,7 +32,7 @@ class Quantum:  # TODO: Comments
 
         # Init dataset
         logger.info("Initializing dataset")
-        # TODO: Dataset Generator
+        self.train_generator = Generator(batch_size, image_shape, images_dir, labels_path, label_max_filter)
 
         # Init torch device
         # TODO: Init tensorflow device
@@ -52,7 +53,7 @@ class Quantum:  # TODO: Comments
         x = Flatten()(x)
         x = Dense(nqubits)(x)
         x = Quantumnet(self._get_q_net_function(), self.nqubits, self.q_delta, self.max_layers)(x)
-        predictions = Dense(self.num_classes)(x)
+        predictions = Dense(self.train_generator.num_classes)(x)
 
         self.model = Model(base_model.input, predictions)
         print(self.model.summary())
