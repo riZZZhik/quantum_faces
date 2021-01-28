@@ -3,8 +3,10 @@ kaggle
 
 tensorflow
 keras
+torch
 
+dlib
+opencv-python
+python-resize-image
 Pillow==6.2.1
 pennylane==0.7.0
-
-facenet-pytorch

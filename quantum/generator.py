@@ -7,9 +7,12 @@ from PIL import Image
 from keras.utils import Sequence, to_categorical
 from loguru import logger
 
+from .image_preparation import ImagePreparation
+
 
 class Generator(Sequence):  # TODO: Function to split images in Train and Val generators
-    def __init__(self, batch_size, image_shape, images_dir, labels_path, label_max_filter=None):
+    def __init__(self, batch_size, image_shape, images_dir, labels_path, label_max_filter=None,
+                 face_shape_predict_model=None):
         assert len(image_shape) == 3, 'Image shape should have 3 dimensions'
 
         # Initialize class variables
@@ -19,6 +22,8 @@ class Generator(Sequence):  # TODO: Function to split images in Train and Val ge
         self.labels_path = labels_path
 
         self.images, self.labels = [], []
+        
+        self.image_preparation = ImagePreparation(face_shape_predict_model)
 
         # Download dataset if needed
         if not os.path.exists(images_dir):
@@ -30,7 +35,7 @@ class Generator(Sequence):  # TODO: Function to split images in Train and Val ge
                 image_path, label = line.split()
                 label = int(label)
                 if not label_max_filter or label < label_max_filter:
-                    self.images.append(image_path)
+                    self.images.append(os.path.join(images_dir, image_path))
                     self.labels.append(label)
 
         self.num_classes = max(self.labels) + 1
@@ -43,7 +48,7 @@ class Generator(Sequence):  # TODO: Function to split images in Train and Val ge
 
     def __getitem__(self, index):
         images_paths = self.images[index * self.batch_size:(index + 1) * self.batch_size]
-        images = np.array([self.norm_image(os.path.join(self.images_dir, image)) for image in images_paths])
+        images = self.image_preparation.norm_images_from_disk(images_paths, 1, self.image_shape)
 
         labels = np.array(self.labels[index * self.batch_size:(index + 1) * self.batch_size])
         return images, labels

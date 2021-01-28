@@ -14,6 +14,7 @@ from .utils_quantum import H_layer, RY_layer, entangling_layer
 
 class Quantum:  # TODO: Comments
     def __init__(self, image_shape, images_dir, labels_path, batch_size, label_max_filter=None,
+                 face_shape_predict_model=None,
                  nqubits=32, q_depth=4, q_delta=0.01, max_layers=15, log_file="logs.log"):
         # Init logger
         if log_file:
@@ -33,7 +34,8 @@ class Quantum:  # TODO: Comments
 
         # Init dataset
         logger.info("Initializing dataset")
-        self.train_generator = Generator(batch_size, image_shape, images_dir, labels_path, label_max_filter)
+        self.train_generator = Generator(batch_size, image_shape, images_dir, labels_path, label_max_filter,
+                                         face_shape_predict_model)
 
         # Init quantum
         try:
