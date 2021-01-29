@@ -2,6 +2,7 @@ import cv2
 import dlib
 import numpy as np
 from PIL import Image
+from loguru import logger
 from resizeimage.resizeimage import resize_cover
 
 TEMPLATE_INFO = np.float32([
@@ -126,24 +127,35 @@ class ImagePreparation:
         if crop_type == 0:
             norm_images = [np.array(resize_cover(image, resize_size)) for image in images]
         else:
-            for image in images:
-                faces = self.crop_faces(image)  # FIXME: No face locations found
-                for face in faces:
-                    if crop_type == 2:
-                        aligned_face = self.get_aligned_frame(np.array(face))
-                        if aligned_face is not None:
-                            shape = aligned_face.shape
-                            coordinates = self.get_face_shape_coordinates(aligned_face)
-                            if coordinates:
-                                norm_images.append(np.zeros(shape[:2], np.int8))
-                                size = int(shape[0] / 60)
-                                for x, y in coordinates[-1]:
-                                    if shape[0] > y >= 0 and shape[1] > x >= 0:
-                                        norm_images[-1] = cv2.circle(norm_images[-1], (x, y), size, 255, -1)
+            for image_path, image in zip(images_path, images):
+                faces = self.crop_faces(image)
 
-                                norm_images[-1] = Image.fromarray(norm_images[-1], "L")
-                                norm_images[-1] = np.array(resize_cover(norm_images[-1], resize_cover))
+                if not faces:
+                    logger.warning(f"No face found on {image_path} image")
+                    norm_images.append(np.zeros(resize_size, np.int8))
+                    continue
+
+                if crop_type == 2:
+                    aligned_face = self.get_aligned_frame(np.array(faces[0]))
+                    if aligned_face:
+                        shape = aligned_face.shape
+                        coordinates = self.get_face_shape_coordinates(aligned_face)
+                        if coordinates:
+                            norm_images.append(np.zeros(shape[:2], np.int8))
+                            size = int(shape[0] / 60)
+                            for x, y in coordinates[-1]:
+                                if shape[0] > y >= 0 and shape[1] > x >= 0:
+                                    norm_images[-1] = cv2.circle(norm_images[-1], (x, y), size, 255, -1)
+
+                            norm_images[-1] = Image.fromarray(norm_images[-1], "L")
+                            norm_images[-1] = np.array(resize_cover(norm_images[-1], resize_cover))
+                        else:
+                            logger.warning(f"No face found on {image_path} image")
+                            norm_images.append(np.zeros(resize_size, np.int8))
                     else:
-                        norm_images.append(np.array(resize_cover(face, resize_size)))
+                        logger.warning(f"No face found on {image_path} image")
+                        norm_images.append(np.zeros(resize_size, np.int8))
+                else:
+                    norm_images.append(np.array(resize_cover(faces[0], resize_size)))
 
         return np.array(norm_images)
