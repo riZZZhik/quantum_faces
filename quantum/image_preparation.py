@@ -118,14 +118,11 @@ class ImagePreparation:
             "resize_size type should be list or tuple and length == 2"
         assert crop_type or self.face_detector, "You didn't given face_shape_predict_model path to class"
 
-        if len(resize_size) == 3:
-            resize_size = resize_size[:2]
-
         images = [Image.open(path) for path in images_path]
         norm_images = []
 
         if crop_type == 0:
-            norm_images = [np.array(resize_cover(image, resize_size)) for image in images]
+            norm_images = [np.array(resize_cover(image, resize_size[:2])) for image in images]
         else:
             for image_path, image in zip(images_path, images):
                 faces = self.crop_faces(image)
@@ -148,7 +145,7 @@ class ImagePreparation:
                                     norm_images[-1] = cv2.circle(norm_images[-1], (x, y), size, 255, -1)
 
                             norm_images[-1] = Image.fromarray(norm_images[-1], "L")
-                            norm_images[-1] = np.array(resize_cover(norm_images[-1], resize_cover))
+                            norm_images[-1] = np.array(resize_cover(norm_images[-1], resize_size[:2]))
                         else:
                             logger.warning(f"No face found on {image_path} image")
                             norm_images.append(np.zeros(resize_size, np.int8))
@@ -156,6 +153,6 @@ class ImagePreparation:
                         logger.warning(f"No face found on {image_path} image")
                         norm_images.append(np.zeros(resize_size, np.int8))
                 else:
-                    norm_images.append(np.array(resize_cover(faces[0], resize_size)))
+                    norm_images.append(np.array(resize_cover(faces[0], resize_size[:2])))
 
         return np.array(norm_images)
