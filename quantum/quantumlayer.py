@@ -5,9 +5,9 @@ from keras.layers import Layer
 from torch import randn
 
 
-class Quantumnet(Layer):  # TODO: Check me
+class QuantumLayer(Layer):
     def __init__(self, q_net, n_qubits, q_delta, max_layers, **kwargs):
-        super(Quantumnet, self).__init__(**kwargs)
+        super(QuantumLayer, self).__init__(**kwargs)
 
         self.n_qubits = n_qubits
         self.q_net = q_net
@@ -15,7 +15,7 @@ class Quantumnet(Layer):  # TODO: Check me
         self.print = True
 
     def get_config(self):
-        config = super(Quantumnet, self).get_config()
+        config = super(QuantumLayer, self).get_config()
         return config
 
     def call(self, inputs, **kwargs):

@@ -3,6 +3,7 @@ import dlib
 import numpy as np
 from PIL import Image
 from loguru import logger
+from resizeimage.imageexceptions import ImageSizeError
 from resizeimage.resizeimage import resize_cover
 
 TEMPLATE_INFO = np.float32([
@@ -113,46 +114,13 @@ class ImagePreparation:
                 face_image.shape[0] * self.minmax_template[face_shape_coordinates_indices])
             return cv2.warpAffine(face_image, affine_transform, face_image.shape[:2])
 
-    def norm_images_from_disk(self, images_path, crop_type, resize_size=(128, 128)):
-        assert type(resize_size) in (list, tuple) and len(resize_size) in (2, 3), \
-            "resize_size type should be list or tuple and length == 2"
-        assert crop_type or self.face_detector, "You didn't given face_shape_predict_model path to class"
-
-        images = [Image.open(path) for path in images_path]
-        norm_images = []
-
-        if crop_type == 0:
-            norm_images = [np.array(resize_cover(image, resize_size[:2])) for image in images]
-        else:
-            for image_path, image in zip(images_path, images):
-                faces = self.crop_faces(image)
-
-                if not faces:
-                    logger.warning(f"No face found on {image_path} image")
-                    norm_images.append(np.zeros(resize_size, np.int8))
-                    continue
-
-                if crop_type == 2:
-                    aligned_face = self.get_aligned_frame(np.array(faces[0]))
-                    if aligned_face:
-                        shape = aligned_face.shape
-                        coordinates = self.get_face_shape_coordinates(aligned_face)
-                        if coordinates:
-                            norm_images.append(np.zeros(shape[:2], np.int8))
-                            size = int(shape[0] / 60)
-                            for x, y in coordinates[-1]:
-                                if shape[0] > y >= 0 and shape[1] > x >= 0:
-                                    norm_images[-1] = cv2.circle(norm_images[-1], (x, y), size, 255, -1)
-
-                            norm_images[-1] = Image.fromarray(norm_images[-1], "L")
-                            norm_images[-1] = np.array(resize_cover(norm_images[-1], resize_size[:2]))
-                        else:
-                            logger.warning(f"No face found on {image_path} image")
-                            norm_images.append(np.zeros(resize_size, np.int8))
-                    else:
-                        logger.warning(f"No face found on {image_path} image")
-                        norm_images.append(np.zeros(resize_size, np.int8))
-                else:
-                    norm_images.append(np.array(resize_cover(faces[0], resize_size[:2])))
-
-        return np.array(norm_images)
+    @staticmethod
+    def resize_image(pil_image, resize_size, image_path=None):
+        try:
+            return np.array(resize_cover(pil_image, resize_size[:2]))
+        except ImageSizeError:
+            if image_path:
+                err_msg = f"The face on the {image_path} image is not high enough resolution"
+            else:
+                err_msg = "The face on the image is not high enough resolution"
+            raise ValueError(err_msg)

@@ -8,7 +8,7 @@ from keras.layers import Dense, Flatten, Softmax
 from loguru import logger
 
 from .generator import Generator
-from .quantumnet import Quantumnet
+from .quantumlayer import QuantumLayer
 from .utils_quantum import H_layer, RY_layer, entangling_layer
 
 
@@ -52,7 +52,7 @@ class Quantum:  # TODO: Comments
         x = base_model.output
         x = Flatten()(x)
         x = Dense(nqubits)(x)
-        x = Quantumnet(self._get_q_net_function(), self.nqubits, self.q_delta, self.max_layers)(x)
+        x = QuantumLayer(self._get_q_net_function(), self.nqubits, self.q_delta, self.max_layers)(x)
         x = Dense(self.train_generator.num_classes)(x)
         predictions = Softmax()(x)
 
