@@ -1,8 +1,6 @@
 import cv2
 import dlib
 import numpy as np
-from PIL import Image
-from loguru import logger
 from resizeimage.imageexceptions import ImageSizeError
 from resizeimage.resizeimage import resize_cover
 
@@ -44,7 +42,14 @@ TEMPLATE_INFO = np.float32([
 
 
 class ImagePreparation:
+    """Class to prepare images before training model"""
     def __init__(self, face_shape_predict_model=None):
+        """Initialize main class variables.
+
+        :param face_shape_predict_model: Path to dlib face_shape_predict_model
+        :type face_shape_predict_model: str
+        """
+
         tpl_min, tpl_max = np.min(TEMPLATE_INFO, axis=0), np.max(TEMPLATE_INFO, axis=0)
         self.minmax_template = (TEMPLATE_INFO - tpl_min) / (tpl_max - tpl_min)
 
@@ -58,6 +63,13 @@ class ImagePreparation:
         self.inner_eyes_and_bottom_lip = [39, 42, 57]
 
     def crop_faces(self, image):
+        """Crop faces on image.
+
+        :param image: Image array
+        :type image: PIL.Image
+        :return: Cropped face images
+        """
+
         assert self.face_detector, "You didn't given face_shape_predict_model path to class"
         image_array = np.array(image)
         locations = self.get_face_detection(image_array)
@@ -70,52 +82,66 @@ class ImagePreparation:
         return face_images
 
     def get_face_detection(self, frame):
-        """
-        Detects faces on the image
+        """Detects faces on the image.
+
         :param frame: input image
-        :type frame: <type 'numpy.ndarray'>
-        :return: enumerate list of rectangles of detected faces
+        :type frame: numpy.ndarray
+        :return: enumerated list of rectangles of detected faces
         """
+
         assert self.face_detector, "You didn't given face_shape_predict_model path to class"
 
         detection = self.face_detector(frame, 1)
         if len(detection):
             return enumerate(detection)
 
-    def get_face_shape_coordinates(self, face_image):
-        """
-        Gets coordinates of 68 points of face shape
-        :param face_image: input image
-        :type face_image: <type 'numpy.ndarray'>
+    def get_face_shape_coordinates(self, image):
+        """Gets coordinates of 68 points of face shape.
+
+        :param image: Image array
+        :type image: numpy.ndarray
         :return: list with 68-points  coordinates (x,y)
         """
+
         assert self.face_detector, "You didn't given face_shape_predict_model path to class"
 
-        face_detection = self.get_face_detection(face_image)
+        face_detection = self.get_face_detection(image)
         if face_detection is not None:
             for index, face_rectangle in face_detection:
-                face_shape = self.face_shape_predictor(face_image, face_rectangle)
+                face_shape = self.face_shape_predictor(image, face_rectangle)
                 return list(map(lambda part: (part.x, part.y), face_shape.parts()))
 
-    def get_aligned_frame(self, face_image):
+    def get_aligned_frame(self, image):
+        """Gets aligned frame with centered shape of face.
+
+        :param image: Image array
+        :type image: numpy.ndarray
+        :return: Aligned frame
         """
-        Gets aligned frame with centered shape of face
-        :param face_image: input image
-        :type face_image: <type 'numpy.ndarray'>
-        :return: aligned frame
-        """
+
         assert self.face_detector, "You didn't given face_shape_predict_model path to class"
 
-        face_shape_coordinates = np.float32(self.get_face_shape_coordinates(face_image))
+        face_shape_coordinates = np.float32(self.get_face_shape_coordinates(image))
         if face_shape_coordinates is not None:
             face_shape_coordinates_indices = np.array(self.inner_eyes_and_bottom_lip)
             affine_transform = cv2.getAffineTransform(
                 face_shape_coordinates[face_shape_coordinates_indices],
-                face_image.shape[0] * self.minmax_template[face_shape_coordinates_indices])
-            return cv2.warpAffine(face_image, affine_transform, face_image.shape[:2])
+                image.shape[0] * self.minmax_template[face_shape_coordinates_indices])
+            return cv2.warpAffine(image, affine_transform, image.shape[:2])
 
     @staticmethod
     def resize_image(pil_image, resize_size, image_path=None):
+        """Resize image to given frame.
+
+        :param pil_image: Image array
+        :type pil_image: PIL.Image
+        :param resize_size: New image size
+        :type resize_size: list or tuple
+        :param image_path: Path to image
+        :type image_path: str
+        :return: Resized image
+        """
+
         try:
             return np.array(resize_cover(pil_image, resize_size[:2]))
         except ImageSizeError:

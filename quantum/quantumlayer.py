@@ -6,7 +6,20 @@ from torch import randn
 
 
 class QuantumLayer(Layer):
+    """Keras quantum layer"""
     def __init__(self, q_net, n_qubits, q_delta, max_layers, **kwargs):
+        """Init main class variables.
+
+        :param q_net: Circuit function
+        :type q_net: function
+        :param nqubits: Number of quantum qubits
+        :type nqubits: int
+        :param q_delta: Quantum delta
+        :type q_delta: float
+        :param max_layers: Maximum quantum layers
+        :type max_layers: int
+        """
+
         super(QuantumLayer, self).__init__(**kwargs)
 
         self.n_qubits = n_qubits
@@ -15,10 +28,22 @@ class QuantumLayer(Layer):
         self.print = True
 
     def get_config(self):
+        """Get keras layer config.
+
+        :return: Keras layer config
+        """
+
         config = super(QuantumLayer, self).get_config()
         return config
 
     def call(self, inputs, **kwargs):
+        """Keras layer call function.
+
+        :param inputs: Outputs from previous layer
+        :type inputs: list or tuple
+        :return: Values after quantum processing
+        """
+
         if tf.executing_eagerly():
             outputs = []
             q_in = tf.tanh(inputs.numpy()) * np.pi / 2.0

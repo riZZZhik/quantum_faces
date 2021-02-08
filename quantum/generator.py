@@ -12,8 +12,27 @@ from .image_preparation import ImagePreparation
 
 
 class Generator(Sequence):  # TODO: Function to split images in Train and Val generators
+    """Keras generator class to CelebA dataset"""
     def __init__(self, batch_size, image_shape, images_dir, labels_path, label_max_filter=None,
                  face_shape_predict_model=None, crop_type=1):
+        """Init main class variables.
+
+        :param batch_size: Batch size
+        :type batch_size: int
+        :param image_shape: Image shape
+        :type image_shape: list or tuple
+        :param images_dir: Path to images dir
+        :type images_dir: str
+        :param labels_path: Path to labels file
+        :type labels_path: str
+        :param label_max_filter: Max label id to filter images
+        :type label_max_filter: int
+        :param face_shape_predict_model: Path to dlib face_shape_predict_model
+        :type face_shape_predict_model: str
+        :param crop_type: Crop type id (0 - dont crop, 1 - crop and align face, 2 - images with 68-points coordinates)
+        :type crop_type: int
+        """
+
         assert len(image_shape) == 3, 'Image shape should have 3 dimensions'
 
         # Initialize class variables
@@ -45,9 +64,21 @@ class Generator(Sequence):  # TODO: Function to split images in Train and Val ge
         logger.info(f"Found {len(self.images)} images with {self.num_classes} classes")
 
     def __len__(self):
+        """Get dataset length.
+
+        :return: Dataset length
+        """
+
         return len(self.images) // self.batch_size
 
     def __getitem__(self, index):
+        """Get batch of images.
+
+        :param index: Current index
+        :type index: int
+        :return: Batch of normalized images
+        """
+
         images = []
         ready_images_paths = []
 
@@ -69,25 +100,34 @@ class Generator(Sequence):  # TODO: Function to split images in Train and Val ge
         return np.array(images), labels
 
     def download_dataset(self):
-        logger.info(f"No CelebA dataset found in {self.images_dir}, downloading dataset from server")
+        """"Download dataset if required"""
+        if not os.path.exists(self.images_dir):
+            logger.info(f"No CelebA dataset found in {self.images_dir}, downloading from server")
 
-        if os.path.exists("tmp"):
-            del_tmp = False
-        else:
-            os.mkdir("tmp")
-            del_tmp = True
+            if os.path.exists("tmp"):
+                del_tmp = False
+            else:
+                os.mkdir("tmp")
+                del_tmp = True
 
-        os.system("mkdir ~/.kaggle")
-        os.system("cp dataset/kaggle.json ~/.kaggle/")
-        os.system("kaggle datasets download -d jessicali9530/celeba-dataset -p tmp")
+            os.system("mkdir ~/.kaggle")
+            os.system("cp dataset/kaggle.json ~/.kaggle/")
+            os.system("kaggle datasets download -d jessicali9530/celeba-dataset -p tmp")
 
-        with zipfile.ZipFile("tmp/celeba-dataset.zip", 'r') as zip_ref:
-            zip_ref.extractall("tmp/")
-        shutil.move("tmp/img_align_celeba/img_align_celeba", self.images_dir)
-        if del_tmp:
-            os.system("rm -rf tmp")
+            with zipfile.ZipFile("tmp/celeba-dataset.zip", 'r') as zip_ref:
+                zip_ref.extractall("tmp/")
+            shutil.move("tmp/img_align_celeba/img_align_celeba", self.images_dir)
+            if del_tmp:
+                os.system("rm -rf tmp")
 
     def norm_image_from_disk(self, image_path):
+        """Download and normalize image from disk.
+
+        :param image_path: Path to image
+        :type image_path: str
+        :return: Normalized image array
+        """
+
         assert self.crop_type or self.image_preparation.face_detector, \
             "You didn't given face_shape_predict_model path to class"
 

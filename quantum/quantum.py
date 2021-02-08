@@ -12,10 +12,37 @@ from .quantumlayer import QuantumLayer
 from .utils_quantum import H_layer, RY_layer, entangling_layer
 
 
-class Quantum:  # TODO: Comments
-    def __init__(self, image_shape, images_dir, labels_path, batch_size, label_max_filter=None,
+class Quantum:
+    """Quantum Transfer Learning model class"""
+    def __init__(self, batch_size, image_shape, images_dir, labels_path, label_max_filter=None,
                  face_shape_predict_model=None,
                  nqubits=32, q_depth=4, q_delta=0.01, max_layers=15, log_file="logs.log"):
+        """Init main class variables.
+
+        :param batch_size: Batch size
+        :type batch_size: int
+        :param image_shape: Image shape
+        :type image_shape: list or tuple
+        :param images_dir: Path to images dir
+        :type images_dir: str
+        :param labels_path: Path to labels file
+        :type labels_path: str
+        :param label_max_filter: Max label id to filter images
+        :type label_max_filter: int
+        :param face_shape_predict_model: Path to dlib face_shape_predict_model
+        :type face_shape_predict_model: str
+        :param nqubits: Number of quantum qubits
+        :type nqubits: int
+        :param q_depth: Quantum depth
+        :type q_depth: int
+        :param q_delta: Quantum delta
+        :type q_delta: float
+        :param max_layers: Maximum quantum layers
+        :type max_layers: int
+        :param log_file: Path to log file
+        :type log_file: str
+        """
+
         # Init logger
         if log_file:
             logger.add(log_file)
@@ -67,6 +94,11 @@ class Quantum:  # TODO: Comments
         # self.exp_lr_scheduler = lr_scheduler.StepLR(self.optimizer, step_size=3, gamma=gamma_lr_scheduler)  # TODO: do we need this in keras?
 
     def _get_q_net_function(self):
+        """Get circuit function.
+
+        :return: Circuit function
+        """
+
         @qml.qnode(self.backend, interface='torch')
         def q_net_circuit(q_in, q_weights_flat):
             # Reshape weights
@@ -89,5 +121,11 @@ class Quantum:  # TODO: Comments
         return q_net_circuit
 
     def train(self, num_epochs):
+        """Train Keras Transfer Learning model.
+
+        :param num_epochs: Number of epochs
+        :type num_epochs: int
+        """
+
         callbacks = [ModelCheckpoint(filepath='checkpoints/model.{epoch:02d}-{accuracy:.2f}.h5', monitor="accuracy")]
         self.model.fit(self.train_generator, epochs=num_epochs, callbacks=callbacks)
